@@ -17,6 +17,9 @@ pub enum AppError {
     #[error("password hashing failed")]
     PasswordHash,
 
+    #[error("internal error occurred: {0}")]
+    InternalServerError(String),
+
     #[error("validation error: {0}")]
     Validation(String),
 
@@ -70,6 +73,9 @@ impl IntoResponse for AppError {
                 (StatusCode::INTERNAL_SERVER_ERROR, self.to_string())
             }
             AppError::JobNotFound => (StatusCode::NOT_FOUND, self.to_string()),
+            AppError::InternalServerError(..) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, self.to_string())
+            }
         };
 
         (status, Json(json!({ "error": message }))).into_response()

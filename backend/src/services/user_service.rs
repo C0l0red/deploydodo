@@ -31,6 +31,16 @@ pub struct User {
     pub created_at: DateTime<chrono::Utc>,
 }
 
+impl User {
+    pub fn verify_password(&self, password: &str) -> Result<(), AppError> {
+        let parsed_hash = argon2::PasswordHash::new(&self.password_hash)
+            .map_err(|e| AppError::InternalServerError(e.to_string()))?;
+        Argon2::default()
+            .verify_password(password.as_bytes(), &parsed_hash)
+            .map_err(|_| AppError::InvalidCredentials)
+    }
+}
+
 impl UserService {
     pub fn new(db: Arc<SqlitePool>) -> Self {
         Self { db }
@@ -66,13 +76,6 @@ impl UserService {
         .fetch_optional(&*self.db)
         .await
         .map_err(AppError::Database)
-    }
-
-    pub fn verify_password(password: &str, hash: &str) -> Result<bool, AppError> {
-        let parsed_hash = argon2::PasswordHash::new(hash).map_err(|_| AppError::PasswordHash)?;
-        Ok(Argon2::default()
-            .verify_password(password.as_bytes(), &parsed_hash)
-            .is_ok())
     }
 
     fn hash_password(password: &str) -> Result<String, AppError> {
