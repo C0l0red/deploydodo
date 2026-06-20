@@ -23,6 +23,9 @@ pub enum AppError {
     #[error("unauthorized")]
     Unauthorized,
 
+    #[error("invalid credentials")]
+    InvalidCredentials,
+
     #[error("a local server already exists")]
     LocalServerAlreadyExists,
 
@@ -56,6 +59,7 @@ impl IntoResponse for AppError {
             }
             AppError::Validation(msg) => (StatusCode::UNPROCESSABLE_ENTITY, msg.clone()),
             AppError::Unauthorized => (StatusCode::UNAUTHORIZED, self.to_string()),
+            AppError::InvalidCredentials => (StatusCode::UNAUTHORIZED, self.to_string()),
             AppError::LocalServerAlreadyExists => (StatusCode::CONFLICT, self.to_string()),
             AppError::MissingKeySecret => {
                 tracing::error!("missing key secret");

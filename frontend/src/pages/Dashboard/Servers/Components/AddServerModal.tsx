@@ -6,6 +6,9 @@ import { useCreateLocalServer, useCreateRemoteServer } from '@/api/mutations'
 import { TextInput } from '@/components/TextInput'
 import { Button } from '@/components/Button'
 import { cn } from '@/utilities/cn'
+import { useJobEvents } from '@/hooks/useJobEvents'
+import type { ConnectingStep } from '@/api/types'
+import { SpinnerIcon, CheckCircleIcon, WarningCircleIcon } from '@/assets/icons'
 
 type FormValues = {
   serverType: 'local' | 'remote'
@@ -16,7 +19,6 @@ type FormValues = {
   authMethod: 'password' | 'keypair'
   password: string
   privateKey: string
-  publicKey: string
 }
 
 type AddServerModalProps = {
@@ -58,11 +60,11 @@ const validationSchema = Yup.object({
     then: (s) => s.required('Password is required'),
     otherwise: (s) => s,
   }),
-  publicKey: Yup.string(),
 })
 
 export function AddServerModal({ open, onClose, onSuccess }: AddServerModalProps) {
   const [error, setError] = useState<string | null>(null)
+  const [jobId, setJobId] = useState<string | null>(null)
 
   const createLocal = useCreateLocalServer()
   const createRemote = useCreateRemoteServer()
@@ -79,7 +81,6 @@ export function AddServerModal({ open, onClose, onSuccess }: AddServerModalProps
       authMethod: 'password',
       password: '',
       privateKey: '',
-      publicKey: '',
     },
     validationSchema,
     validateOnMount: false,
@@ -90,19 +91,33 @@ export function AddServerModal({ open, onClose, onSuccess }: AddServerModalProps
         createLocal.mutate(
           { name: values.name.trim(), hostname: values.hostname.trim() },
           {
-            onSuccess: () => { onSuccess(); onClose() },
+            onSuccess: (result) => {
+              if (result.error) {
+                setError((result.error as any).error || 'Failed to create local server')
+                return
+              }
+              if (!result.data) {
+                setError('Failed to create local server: No data returned')
+                return
+              }
+              onSuccess()
+              onClose()
+            },
             onError: (e) => setError(e.message),
           },
         )
       } else {
         const auth =
           values.authMethod === 'password'
-            ? ({ authType: 'password', username: values.username.trim(), password: values.password } as const)
+            ? ({
+                authType: 'password',
+                username: values.username.trim(),
+                password: values.password,
+              } as const)
             : ({
                 authType: 'keypair',
                 username: values.username.trim(),
                 privateKey: values.privateKey.trim(),
-                publicKey: values.publicKey.trim() || null,
               } as const)
 
         createRemote.mutate(
@@ -113,7 +128,17 @@ export function AddServerModal({ open, onClose, onSuccess }: AddServerModalProps
             auth,
           },
           {
-            onSuccess: () => { onSuccess(); onClose() },
+            onSuccess: (result) => {
+              if (result.error) {
+                setError((result.error as any).error || 'Failed to start remote server creation')
+                return
+              }
+              if (!result.data) {
+                setError('Failed to create remote server: No data returned')
+                return
+              }
+              setJobId(result.data.jobId)
+            },
             onError: (e) => setError(e.message),
           },
         )
@@ -124,6 +149,7 @@ export function AddServerModal({ open, onClose, onSuccess }: AddServerModalProps
   function reset() {
     formik.resetForm()
     setError(null)
+    setJobId(null)
   }
 
   function handleClose() {
@@ -136,7 +162,7 @@ export function AddServerModal({ open, onClose, onSuccess }: AddServerModalProps
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="fixed inset-0 bg-black/30" onClick={handleClose} />
+      <div className="fixed inset-0 bg-black/30" />
       <form
         onSubmit={formik.handleSubmit}
         className="relative bg-white rounded-xl shadow-xl w-full max-w-2xl mx-4 max-h-[85vh] flex flex-col overflow-hidden"
@@ -145,7 +171,9 @@ export function AddServerModal({ open, onClose, onSuccess }: AddServerModalProps
         {/* Header */}
         <div className="px-6 py-5 border-b border-neutral-100 flex justify-between items-start shrink-0">
           <div className="flex flex-col gap-0.5">
-            <h2 className="font-sans font-semibold text-xl leading-7 text-high-contrast m-0">Add Server</h2>
+            <h2 className="font-sans font-semibold text-xl leading-7 text-high-contrast m-0">
+              Add Server
+            </h2>
             <p className="font-sans font-normal text-sm leading-5 text-text-secondary m-0">
               Configure a new server for your deployments.
             </p>
@@ -156,17 +184,42 @@ export function AddServerModal({ open, onClose, onSuccess }: AddServerModalProps
             disabled={isSubmitting}
             className="size-8 flex items-center justify-center rounded-lg text-text-secondary hover:text-high-contrast hover:bg-neutral-200 transition-colors disabled:opacity-50"
           >
-            <svg className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            <svg
+              className="size-5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
           </button>
         </div>
 
-        {/* Scrollable Body */}
-        <div className="flex-1 overflow-y-auto px-6 py-6 flex flex-col gap-5">
+        {jobId ? (
+          <RemoteServerProgress
+            jobId={jobId}
+            onSuccess={() => {
+              onSuccess()
+              handleClose()
+            }}
+            onError={(msg) => {
+              setError(msg)
+              setJobId(null)
+            }}
+          />
+        ) : (
+          <>
+            {/* Scrollable Body */}
+            <div className="flex-1 overflow-y-auto px-6 py-6 flex flex-col gap-5">
           {/* Server type toggle */}
           <div className="flex flex-col gap-2">
-            <label className="font-sans font-normal text-base leading-6 text-secondary">Server Type</label>
+            <label className="font-sans font-normal text-base leading-6 text-secondary">
+              Server Type
+            </label>
             <div className="flex rounded-lg border border-neutral-100 overflow-hidden">
               <button
                 type="button"
@@ -205,7 +258,9 @@ export function AddServerModal({ open, onClose, onSuccess }: AddServerModalProps
             placeholder="My Server"
             required
             hasError={formik.touched.name && !!formik.errors.name}
-            errorMessage={formik.touched.name && formik.errors.name ? formik.errors.name : undefined}
+            errorMessage={
+              formik.touched.name && formik.errors.name ? formik.errors.name : undefined
+            }
           />
           <TextInput
             label="Hostname"
@@ -216,7 +271,9 @@ export function AddServerModal({ open, onClose, onSuccess }: AddServerModalProps
             placeholder="192.168.1.100"
             required
             hasError={formik.touched.hostname && !!formik.errors.hostname}
-            errorMessage={formik.touched.hostname && formik.errors.hostname ? formik.errors.hostname : undefined}
+            errorMessage={
+              formik.touched.hostname && formik.errors.hostname ? formik.errors.hostname : undefined
+            }
           />
 
           {/* Remote-only fields */}
@@ -231,12 +288,16 @@ export function AddServerModal({ open, onClose, onSuccess }: AddServerModalProps
                 onBlur={formik.handleBlur}
                 placeholder="22"
                 hasError={formik.touched.port && !!formik.errors.port}
-                errorMessage={formik.touched.port && formik.errors.port ? formik.errors.port : undefined}
+                errorMessage={
+                  formik.touched.port && formik.errors.port ? formik.errors.port : undefined
+                }
               />
 
               {/* Auth type */}
               <div className="flex flex-col gap-2">
-                <label className="font-sans font-normal text-base leading-6 text-secondary">Authentication</label>
+                <label className="font-sans font-normal text-base leading-6 text-secondary">
+                  Authentication
+                </label>
                 <div className="flex rounded-lg border border-neutral-100 overflow-hidden">
                   <button
                     type="button"
@@ -274,7 +335,11 @@ export function AddServerModal({ open, onClose, onSuccess }: AddServerModalProps
                 placeholder="root"
                 required
                 hasError={formik.touched.username && !!formik.errors.username}
-                errorMessage={formik.touched.username && formik.errors.username ? formik.errors.username : undefined}
+                errorMessage={
+                  formik.touched.username && formik.errors.username
+                    ? formik.errors.username
+                    : undefined
+                }
               />
 
               {formik.values.authMethod === 'password' ? (
@@ -287,12 +352,21 @@ export function AddServerModal({ open, onClose, onSuccess }: AddServerModalProps
                   onBlur={formik.handleBlur}
                   required
                   hasError={formik.touched.password && !!formik.errors.password}
-                  errorMessage={formik.touched.password && formik.errors.password ? formik.errors.password : undefined}
+                  errorMessage={
+                    formik.touched.password && formik.errors.password
+                      ? formik.errors.password
+                      : undefined
+                  }
                 />
               ) : (
                 <>
                   <div className="flex flex-col gap-2">
-                    <label className="font-sans font-normal text-base leading-6 text-secondary" htmlFor="private-key">Private Key</label>
+                    <label
+                      className="font-sans font-normal text-base leading-6 text-secondary"
+                      htmlFor="private-key"
+                    >
+                      Private Key
+                    </label>
                     <textarea
                       id="private-key"
                       name="privateKey"
@@ -302,7 +376,9 @@ export function AddServerModal({ open, onClose, onSuccess }: AddServerModalProps
                       placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"
                       className={cn(
                         'w-full bg-background border border-neutral-100 rounded-lg px-3 py-2 font-mono font-normal text-xs leading-5 text-secondary outline-none resize-none focus:border-secondary transition-[border-color] duration-150',
-                        formik.touched.privateKey && formik.errors.privateKey ? 'border-error!' : '',
+                        formik.touched.privateKey && formik.errors.privateKey
+                          ? 'border-error!'
+                          : '',
                       )}
                       rows={6}
                     />
@@ -312,21 +388,12 @@ export function AddServerModal({ open, onClose, onSuccess }: AddServerModalProps
                       </p>
                     )}
                   </div>
-                  <TextInput
-                    label="Public Key (optional)"
-                    name="publicKey"
-                    value={formik.values.publicKey}
-                    onChange={formik.handleChange}
-                    onBlur={formik.handleBlur}
-                  />
                 </>
               )}
             </>
           )}
 
-          {error && (
-            <p className="font-manrope text-sm text-error m-0">{error}</p>
-          )}
+          {error && <p className="font-manrope text-sm text-error m-0">{error}</p>}
         </div>
 
         {/* Footer */}
@@ -335,11 +402,113 @@ export function AddServerModal({ open, onClose, onSuccess }: AddServerModalProps
             Cancel
           </Button>
           <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Creating...' : `Create ${formik.values.serverType === 'local' ? 'Local' : 'Remote'} Server`}
+            {isSubmitting ? (
+              <>
+                <svg
+                  className="animate-spin -ml-1 mr-2 h-4 w-4"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                  />
+                </svg>
+                Creating...
+              </>
+            ) : (
+              `Create ${formik.values.serverType === 'local' ? 'Local' : 'Remote'} Server`
+            )}
           </Button>
         </div>
+          </>
+        )}
       </form>
     </div>,
     document.body,
+  )
+}
+
+function RemoteServerProgress({
+  jobId,
+  onSuccess,
+  onError,
+}: {
+  jobId: string
+  onSuccess: () => void
+  onError: (msg: string) => void
+}) {
+  const [steps, setSteps] = useState<ConnectingStep[]>([])
+  const [internalError, setInternalError] = useState<string | null>(null)
+
+  useJobEvents(jobId, {
+    onProgress: (newSteps) => setSteps(newSteps),
+    onComplete: () => {
+      setTimeout(() => onSuccess(), 1500)
+    },
+    onError: (err) => {
+      setInternalError(err.message)
+    },
+  })
+
+  return (
+    <div className="flex-1 px-6 py-8 flex flex-col gap-6 items-center justify-center min-h-[300px]">
+      {internalError ? (
+        <div className="flex flex-col items-center gap-4 text-center">
+          <WarningCircleIcon className="size-12 text-error" />
+          <div className="flex flex-col gap-2">
+            <h3 className="font-sans font-semibold text-lg text-high-contrast m-0">Connection Failed</h3>
+            <p className="font-sans text-sm text-text-secondary m-0 max-w-sm">{internalError}</p>
+          </div>
+          <Button type="button" onClick={() => onError(internalError)} variant="ghost" className="mt-2">
+            Go Back
+          </Button>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-4 w-full max-w-sm">
+          {steps.map((step) => (
+            <div key={step.key} className="flex items-center gap-3">
+              <div className="size-6 flex items-center justify-center shrink-0">
+                {step.status === 'done' ? (
+                  <CheckCircleIcon className="size-5 text-[#00C16A]" />
+                ) : step.status === 'loading' ? (
+                  <SpinnerIcon className="size-5 text-secondary animate-spin" />
+                ) : step.status === 'warning' ? (
+                  <WarningCircleIcon className="size-5 text-error" />
+                ) : (
+                  <div className="size-2 rounded-full bg-neutral-200" />
+                )}
+              </div>
+              <span
+                className={cn(
+                  'font-sans text-sm transition-colors',
+                  step.status === 'done'
+                    ? 'text-high-contrast font-medium'
+                    : step.status === 'loading'
+                      ? 'text-secondary font-medium'
+                      : 'text-text-secondary',
+                )}
+              >
+                {step.label}
+              </span>
+            </div>
+          ))}
+          {steps.length === 0 && (
+            <div className="flex items-center justify-center py-4">
+               <SpinnerIcon className="size-6 text-secondary animate-spin" />
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   )
 }

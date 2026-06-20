@@ -4,5 +4,6 @@ pub mod create_remote_server;
 pub mod health;
 pub mod job_events;
 pub mod list_servers;
+pub mod login;
 pub mod status;
 pub mod validate_session;

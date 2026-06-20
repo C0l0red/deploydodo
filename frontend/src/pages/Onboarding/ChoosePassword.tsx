@@ -3,6 +3,7 @@ import { useFormik } from 'formik'
 import * as Yup from 'yup'
 import { TextInput } from '@/components/TextInput'
 import { Button } from '@/components/Button'
+import { useToast } from '@/components/Toast'
 import { useCreateAdmin } from '@/api/mutations'
 import { EyeOpenIcon, EyeClosedIcon } from '@/assets/icons'
 
@@ -74,11 +75,13 @@ type ChoosePasswordProps = {
 export function ChoosePassword({ name, email, onBack, onCreateAccount }: ChoosePasswordProps) {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const { toast } = useToast()
 
   const createAdmin = useCreateAdmin({
     onSuccess: ({ data, error }) => {
       if (error || !data) return
       localStorage.setItem('session_token', data.sessionToken)
+      toast('Account created successfully', 'success')
       onCreateAccount()
     },
   })

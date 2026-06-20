@@ -1,7 +1,15 @@
 import { CheckCircleOutlineIcon } from '@/assets/icons'
-import { Card } from './PageLayout'
+import { useToast } from '@/components/Toast'
+import { Card } from '@/layouts/PageLayout'
 
 export function SetupCompleteView({ onGoToDashboard }: { onGoToDashboard: () => void }) {
+  const { toast } = useToast()
+
+  function handleGoToDashboard() {
+    toast('Setup complete — welcome to DeployDodo', 'success')
+    onGoToDashboard()
+  }
+
   return (
     <Card className="p-10">
       <div className="flex flex-col items-center gap-8">
@@ -17,7 +25,7 @@ export function SetupCompleteView({ onGoToDashboard }: { onGoToDashboard: () => 
 
         <button
           type="button"
-          onClick={onGoToDashboard}
+          onClick={handleGoToDashboard}
           className="w-150 bg-secondary text-pure-white font-manrope font-bold text-sm leading-6 rounded-lg px-4 py-2 hover:opacity-[0.88] active:opacity-75 transition-opacity duration-150"
         >
           Go to Dashboard

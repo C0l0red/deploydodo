@@ -48,6 +48,10 @@ async fn main() {
             "/api/auth/validate",
             get(routes::validate_session::validate_session),
         )
+        .route(
+            "/api/auth/login",
+            post(routes::login::login),
+        )
         .route("/api/setup/admin", post(routes::create_admin::create_admin))
         .route(
             "/api/setup/server/local",

@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { AnimatePresence, motion } from 'framer-motion'
 import { cn } from '@/utilities/cn'
 import { OutlineButton } from './Components'
 import { ConfigurationTab } from './Components/DetailTabs/ConfigurationTab'
@@ -18,12 +17,6 @@ export function ServerDetail() {
 
   // ─── Tab definitions ─────────────────────────────────────────────────────────
   const tabs: Tab[] = ['Configuration', 'Proxy', 'Resources', 'Terminal', 'Security']
-
-  const tabVariants = {
-    initial: { opacity: 0, y: 4 },
-    animate: { opacity: 1, y: 0 },
-    exit: { opacity: 0, y: -4 },
-  }
 
   // ─── Render ──────────────────────────────────────────────────────────────────
   return (
@@ -51,7 +44,7 @@ export function ServerDetail() {
       </div>
 
       {/* Tabs + action buttons */}
-      <div className="flex items-center justify-between border-b border-neutral-100">
+      <div className="flex items-end justify-between border-b border-neutral-100">
         <div className="flex gap-6">
           {tabs.map((tab) => (
             <button
@@ -88,25 +81,13 @@ export function ServerDetail() {
       </div>
 
       {/* ─── TAB CONTENT ────────────────────────────────────────────────────────── */}
-      <AnimatePresence mode="wait" initial={false}>
+      <div className="mt-4">
         {activeTab === 'Configuration' && <ConfigurationTab />}
         {activeTab === 'Proxy' && <ProxyTab />}
-        {activeTab === 'Resources' && (
-          <motion.div key="Resources" variants={tabVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.12, ease: 'easeOut' }}>
-            <ResourcesTab />
-          </motion.div>
-        )}
-        {activeTab === 'Terminal' && (
-          <motion.div key="Terminal" variants={tabVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.12, ease: 'easeOut' }}>
-            <TerminalTab />
-          </motion.div>
-        )}
-        {activeTab === 'Security' && (
-          <motion.div key="Security" variants={tabVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.12, ease: 'easeOut' }}>
-            <SecurityTab />
-          </motion.div>
-        )}
-      </AnimatePresence>
+        {activeTab === 'Resources' && <ResourcesTab />}
+        {activeTab === 'Terminal' && <TerminalTab />}
+        {activeTab === 'Security' && <SecurityTab />}
+      </div>
     </div>
   )
 }

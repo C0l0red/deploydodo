@@ -8,7 +8,7 @@ export function Sidebar<T extends string>({ options, active, onChange, }: { opti
           key={opt}
           onClick={() => onChange(opt)}
           className={cn(
-            'w-full text-left font-manrope text-sm leading-6 px-3 py-1.5 rounded-lg transition-colors duration-150 outline-none',
+            'w-full text-left font-manrope text-sm leading-6 px-3 py-1.5 rounded-lg transition-colors duration-150 outline-none whitespace-nowrap',
             active === opt
               ? 'font-bold bg-neutral-200 text-high-contrast'
               : 'font-normal text-text-secondary hover:bg-neutral-100 hover:text-high-contrast'

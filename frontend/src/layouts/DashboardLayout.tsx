@@ -68,6 +68,7 @@ function NavItem({ Icon, label, to }: NavItemDef) {
 }
 
 export function DashboardLayout() {
+  const navigate = useNavigate()
   const location = useLocation()
   const [ready, setReady] = useState(false)
   const isFirstRender = useRef(true)
@@ -124,7 +125,13 @@ export function DashboardLayout() {
           </div>
           <div className="flex flex-col gap-2">
             <div className="border-t border-neutral-100" />
-            <button className="flex items-center gap-2 w-full pl-3 pr-2 py-2 rounded-lg text-left transition-colors duration-150 hover:bg-neutral-200">
+            <button
+              onClick={() => {
+                localStorage.removeItem('session_token')
+                navigate({ to: '/login' })
+              }}
+              className="flex items-center gap-2 w-full pl-3 pr-2 py-2 rounded-lg text-left transition-colors duration-150 hover:bg-neutral-200"
+            >
               <NavLogoutIcon className="size-4 shrink-0" />
               <span className="font-manrope font-normal text-sm leading-6 text-high-contrast">
                 Logout

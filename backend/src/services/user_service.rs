@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use argon2::{password_hash::SaltString, Argon2, PasswordHasher};
+use argon2::{password_hash::SaltString, Argon2, PasswordHasher, PasswordVerifier};
 use chrono::DateTime;
 use rand_core::OsRng;
 use serde::Serialize;
@@ -56,6 +56,23 @@ impl UserService {
             .fetch_one(&*self.db)
             .await
             .map_err(AppError::Database)
+    }
+
+    pub async fn get_by_email(&self, email: &str) -> Result<Option<User>, AppError> {
+        sqlx::query_as::<_, User>(
+            "SELECT id, name, email, password_hash, account_type, created_at FROM users WHERE email = $1",
+        )
+        .bind(email)
+        .fetch_optional(&*self.db)
+        .await
+        .map_err(AppError::Database)
+    }
+
+    pub fn verify_password(password: &str, hash: &str) -> Result<bool, AppError> {
+        let parsed_hash = argon2::PasswordHash::new(hash).map_err(|_| AppError::PasswordHash)?;
+        Ok(Argon2::default()
+            .verify_password(password.as_bytes(), &parsed_hash)
+            .is_ok())
     }
 
     fn hash_password(password: &str) -> Result<String, AppError> {

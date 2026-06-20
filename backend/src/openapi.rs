@@ -2,7 +2,7 @@ use utoipa::OpenApi;
 
 use crate::routes::{
     create_admin, create_local_server, create_remote_server, health, job_events, list_servers,
-    status, validate_session,
+    login, status, validate_session,
 };
 use crate::services::types;
 
@@ -17,6 +17,7 @@ use crate::services::types;
         health::health,
         status::status,
         validate_session::validate_session,
+        login::login,
         create_admin::create_admin,
         create_local_server::create_local_server,
         create_remote_server::create_remote_server,
@@ -27,6 +28,8 @@ use crate::services::types;
         health::HealthResponse,
         status::StatusResponse,
         validate_session::ValidateSessionResponse,
+        login::LoginRequest,
+        login::LoginResponse,
         create_admin::CreateAdminRequest,
         create_admin::AdminResponse,
         create_local_server::CreateLocalServerRequest,

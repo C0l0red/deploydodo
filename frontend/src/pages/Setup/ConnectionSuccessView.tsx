@@ -1,6 +1,6 @@
 import { CheckCircleOutlineIcon } from '@/assets/icons'
 import type { JobCompletePayload } from '@/api/types'
-import { Card } from './PageLayout'
+import { Card } from '@/layouts/PageLayout'
 
 function InfoTile({ label, value }: { label: string; value: string }) {
   return (
@@ -18,9 +18,11 @@ function InfoTile({ label, value }: { label: string; value: string }) {
 export function ConnectionSuccessView({
   server,
   onContinue,
+  subtitle = 'SSH session established and validated',
 }: {
   server: JobCompletePayload
   onContinue: () => void
+  subtitle?: string
 }) {
   return (
     <Card className="p-10">
@@ -32,7 +34,7 @@ export function ConnectionSuccessView({
             Connection Successful!
           </h2>
           <p className="font-sans font-normal text-lg leading-7 text-high-contrast m-0">
-            SSH session established and validated
+            {subtitle}
           </p>
         </div>
 
@@ -42,7 +44,7 @@ export function ConnectionSuccessView({
             <InfoTile label="Host" value={server.hostname} />
           </div>
           <div className="flex gap-6">
-            <InfoTile label="SSH Port" value={String(server.port)} />
+            <InfoTile label="SSH Port" value={server.port ? String(server.port) : '—'} />
             <InfoTile label="Type" value={server.serverType} />
           </div>
         </div>

@@ -12,7 +12,7 @@ import type {
   JobCompletePayload,
   JobErrorPayload,
 } from '@/api/types'
-import { Card } from './PageLayout'
+import { Card } from '@/layouts/PageLayout'
 
 function CheckListItem({ label, status }: { label: string; status: ConnectingStepStatus }) {
   return (

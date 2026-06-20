@@ -2,7 +2,7 @@ mod job_service;
 mod server_service;
 mod session_service;
 pub mod ssh_service;
-mod user_service;
+pub mod user_service;
 mod variables_service;
 
 pub use job_service::JobService;

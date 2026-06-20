@@ -3,9 +3,10 @@ import { useNavigate } from '@tanstack/react-router'
 
 const PENDING_JOB_KEY = 'deploydodo:pending_job_id'
 import type { JobCompletePayload, JobErrorPayload } from '@/api/types'
-import { PageLayout } from './PageLayout'
+import { PageLayout } from '@/layouts/PageLayout'
 import { Stepper } from './Stepper'
 import { SelectView, type ServerOptionId } from './SelectView'
+import { LocalServerView } from './LocalServerView'
 import { RemoteServerView } from './RemoteServerView'
 import { ConnectingView } from './ConnectingView'
 import { ConnectionSuccessView } from './ConnectionSuccessView'
@@ -14,6 +15,7 @@ import { SetupCompleteView } from './SetupCompleteView'
 
 type View =
   | 'select'
+  | 'local-server'
   | 'remote-server'
   | 'connecting'
   | 'connection-success'
@@ -23,6 +25,7 @@ type View =
 function stepperProps(view: View) {
   switch (view) {
     case 'select':
+    case 'local-server':
     case 'remote-server':
       return { currentStep: 1 }
     case 'connecting':
@@ -46,7 +49,7 @@ export function SelectServer() {
 
   function handleSelect(id: ServerOptionId) {
     if (id === 'remote-server') setView('remote-server')
-    // TODO: handle 'this-machine'
+    if (id === 'this-machine') setView('local-server')
   }
 
   function handleConnect(newJobId: string) {
@@ -81,6 +84,16 @@ export function SelectServer() {
 
       {view === 'select' && <SelectView onSelect={handleSelect} />}
 
+      {view === 'local-server' && (
+        <LocalServerView
+          onBack={() => setView('select')}
+          onSuccess={(s) => {
+            setServer({ ...s, port: s.port ?? 0 })
+            setView('connection-success')
+          }}
+        />
+      )}
+
       {view === 'remote-server' && (
         <RemoteServerView onBack={() => setView('select')} onConnect={handleConnect} />
       )}
@@ -90,7 +103,15 @@ export function SelectServer() {
       )}
 
       {view === 'connection-success' && server && (
-        <ConnectionSuccessView server={server} onContinue={() => setView('setup-complete')} />
+        <ConnectionSuccessView
+          server={server}
+          subtitle={
+            server.serverType === 'local'
+              ? 'Local server configured successfully'
+              : 'SSH session established and validated'
+          }
+          onContinue={() => setView('setup-complete')}
+        />
       )}
 
       {view === 'connection-failed' && (

@@ -1,5 +1,5 @@
 import { WarningTriangleIcon } from '@/assets/icons'
-import { Card } from './PageLayout'
+import { Card } from '@/layouts/PageLayout'
 
 export function ConnectionFailedView({
   errorMessage,

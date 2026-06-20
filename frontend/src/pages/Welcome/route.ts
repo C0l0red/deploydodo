@@ -8,7 +8,7 @@ export const welcomeRoute = createRoute({
   path: '/welcome',
   beforeLoad: async () => {
     const { status } = await requireAuth()
-    if (status.isOnboardingComplete) throw redirect({ to: '/dashboard' })
+    if (status.isServerSetup) throw redirect({ to: '/dashboard' })
   },
   loader: async () => {
     const { getStatus } = await import('@/api/queries')

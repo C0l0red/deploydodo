@@ -4,11 +4,26 @@ import { SectionCard, SectionHeader } from '..'
 export function TerminalTab() {
   const [terminalLines, setTerminalLines] = useState<string[]>([])
   const [terminalInput, setTerminalInput] = useState('')
-  const terminalBottomRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    terminalBottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const container = containerRef.current
+    const inputForm = document.getElementById('terminal-input-form')
+    if (container && inputForm) {
+      const formBottom = inputForm.offsetTop + inputForm.offsetHeight
+      if (formBottom > container.scrollTop + container.clientHeight) {
+        container.scrollTop = formBottom - container.clientHeight + 40
+      }
+    }
   }, [terminalLines])
+
+  // Focus the input on mount without scrolling the page
+  useEffect(() => {
+    const input = document.getElementById('terminal-input')
+    if (input) {
+      input.focus({ preventScroll: true })
+    }
+  }, [])
 
   const handleTerminalSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -43,8 +58,9 @@ export function TerminalTab() {
         subtitle="Configuration file ( /data/DeployDodo/proxy/docker-compose.yml )"
       />
       <div
+        ref={containerRef}
         className="border border-neutral-100 rounded-xl py-5 px-3 min-h-[550px] max-h-[700px] overflow-y-auto font-mono text-sm flex flex-col bg-white select-text cursor-text"
-        onClick={() => document.getElementById('terminal-input')?.focus()}
+        onClick={() => document.getElementById('terminal-input')?.focus({ preventScroll: true })}
       >
         {(() => {
           const totalMinLines = 29
@@ -86,7 +102,7 @@ export function TerminalTab() {
                   </div>
                 )}
                 {row.type === 'input' && (
-                  <form onSubmit={handleTerminalSubmit} className="flex-1 flex items-center gap-1.5 min-w-0">
+                  <form id="terminal-input-form" onSubmit={handleTerminalSubmit} className="flex-1 flex items-center gap-1.5 min-w-0">
                     <span className="text-text-secondary select-none shrink-0 font-mono text-sm leading-6">
                       root@DeployDodo-explorer:~#
                     </span>
@@ -96,7 +112,6 @@ export function TerminalTab() {
                       value={terminalInput}
                       onChange={(e) => setTerminalInput(e.target.value)}
                       className="flex-1 bg-transparent border-none outline-none text-high-contrast font-semibold font-mono text-sm p-0 m-0 leading-6 focus:ring-0 focus:outline-none focus:border-none"
-                      autoFocus
                       autoComplete="off"
                       spellCheck={false}
                     />
@@ -107,7 +122,7 @@ export function TerminalTab() {
             )
           })
         })()}
-        <div ref={terminalBottomRef} />
+        <div />
       </div>
     </SectionCard>
   )
