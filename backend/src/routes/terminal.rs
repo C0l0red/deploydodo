@@ -52,13 +52,12 @@ async fn handle_socket(
     token: String,
 ) -> Result<(), crate::error::AppError> {
     // Auth
-    let _valid = deps.session_service.validate_session(token.trim()).await?;
-    // Skip auth during development
-    // if !_valid {
-    //     let _ = send_msg(&mut socket, ServerMessage::Error { message: "Unauthorized".into() }).await;
-    //     let _ = socket.close().await;
-    //     return Ok(());
-    // }
+    let valid = deps.session_service.validate_session(token.trim()).await?;
+    if !valid {
+        let _ = send_msg(&mut socket, ServerMessage::Error { message: "Unauthorized".into() }).await;
+        let _ = socket.close().await;
+        return Ok(());
+    }
 
     // Look up server
     let servers = deps.server_service.list_servers().await?;
