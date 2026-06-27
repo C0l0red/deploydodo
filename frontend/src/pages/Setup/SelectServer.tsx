@@ -3,7 +3,7 @@ import { useNavigate } from '@tanstack/react-router'
 
 const PENDING_JOB_KEY = 'deploydodo:pending_job_id'
 import type { JobCompletePayload, JobErrorPayload } from '@/api/types'
-import { PageLayout } from '@/layouts/PageLayout'
+import { PageLayout } from '@/pages/Dashboard/Servers/PageLayout'
 import { Stepper } from './Stepper'
 import { SelectView, type ServerOptionId } from './SelectView'
 import { LocalServerView } from './LocalServerView'

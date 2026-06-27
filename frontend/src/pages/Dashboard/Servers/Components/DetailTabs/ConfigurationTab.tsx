@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useFormik } from 'formik'
 import * as Yup from 'yup'
-import { motion } from 'framer-motion'
 import { EyeClosedIcon, EyeOpenIcon } from '@/assets/icons'
 import { TextInput } from '@/components/TextInput'
 import { Toggle, SectionCard, SectionHeader, SaveButton, OutlineButton, SelectField, FieldLabel, AreaChart, BarChart, Sidebar } from '..'
@@ -12,13 +11,13 @@ type ConfigSidebar =
   | 'Private Key'
   | 'CA Certificate'
   | 'Docker Cleanup'
-  | 'Destinations'
+  // | 'Destinations'
   | 'Log Drains'
   | 'Metrics'
 
 const configOptions: ConfigSidebar[] = [
   'General', 'Advanced', 'Private Key', 'CA Certificate',
-  'Docker Cleanup', 'Destinations', 'Log Drains', 'Metrics',
+  'Docker Cleanup', /* 'Destinations', */ 'Log Drains', 'Metrics',
 ]
 
 export function ConfigurationTab() {
@@ -98,15 +97,8 @@ export function ConfigurationTab() {
   })
 
   return (
-    <motion.div
-      key="Configuration"
-      initial={{ opacity: 0, y: 4 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -4 }}
-      transition={{ duration: 0.12, ease: 'easeOut' }}
-    >
-      <div className="flex gap-6 items-start">
-        <Sidebar options={configOptions} active={activeConfigSidebar} onChange={setActiveConfigSidebar} />
+    <div className="flex gap-6 items-start">
+      <Sidebar options={configOptions} active={activeConfigSidebar} onChange={setActiveConfigSidebar} />
 
         <div className="flex-1 min-w-0 flex flex-col gap-5">
 
@@ -553,6 +545,7 @@ export function ConfigurationTab() {
           )}
 
           {/* ── Destinations ── */}
+          {/*
           {activeConfigSidebar === 'Destinations' && (
             <div className="flex flex-col gap-5">
               <div className="flex items-center justify-between">
@@ -590,6 +583,7 @@ export function ConfigurationTab() {
               </div>
             </div>
           )}
+          */}
 
           {/* ── Log Drains ── */}
           {activeConfigSidebar === 'Log Drains' && (
@@ -769,9 +763,9 @@ http:
 
               {/* Memory Usage Card */}
               <SectionCard>
-                <div className="flex flex-col gap-4">
-                  <h3 className="font-sans font-bold text-lg text-high-contrast m-0">Memory Usage</h3>
-                  <div className="rounded-xl overflow-hidden bg-[rgba(255,113,62,0.04)] border border-neutral-100">
+                <div className="flex flex-col gap-6">
+                  <h3 className="font-sans font-bold text-xl text-high-contrast m-0">Memory Usage</h3>
+                  <div className="-mx-2">
                     <AreaChart />
                   </div>
                 </div>
@@ -779,9 +773,9 @@ http:
 
               {/* CPU Usage Card */}
               <SectionCard>
-                <div className="flex flex-col gap-4">
-                  <h3 className="font-sans font-bold text-lg text-high-contrast m-0">CPU Usage</h3>
-                  <div className="rounded-xl overflow-hidden bg-[rgba(255,113,62,0.04)] border border-neutral-100 px-2 pt-2">
+                <div className="flex flex-col gap-6">
+                  <h3 className="font-sans font-bold text-xl text-high-contrast m-0">CPU Usage</h3>
+                  <div className="-mx-2">
                     <BarChart />
                   </div>
                 </div>
@@ -790,6 +784,5 @@ http:
           )}
         </div>
       </div>
-    </motion.div>
   )
 }

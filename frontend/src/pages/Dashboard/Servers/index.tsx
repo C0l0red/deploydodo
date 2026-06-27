@@ -1,5 +1,7 @@
 import { useState } from 'react'
+import { motion } from 'framer-motion'
 import { PlusIcon } from '@/assets/icons'
+import { StaggerContainer, StaggerItem, staggerItemVariants } from '@/components/Animated'
 import { useServersQuery } from '@/api/queries'
 import { ServerCard, AddServerModal } from './Components'
 
@@ -15,16 +17,17 @@ export function Servers() {
         onSuccess={() => refetch()}
       />
 
-      <div className="flex items-end justify-between">
-        <div className="flex flex-col gap-2">
+      <StaggerContainer className="flex items-end justify-between">
+        <StaggerItem className="flex flex-col gap-2">
           <h1 className="font-sans font-semibold text-[40px] leading-12 tracking-[-0.5px] text-high-contrast m-0">
             Servers
           </h1>
           <p className="font-sans font-normal text-base leading-6 text-text-secondary m-0">
             All your servers are here.
           </p>
-        </div>
-        <button
+        </StaggerItem>
+        <motion.button
+          variants={staggerItemVariants}
           onClick={() => setModalOpen(true)}
           className="flex items-center gap-2 pl-2.5 pr-4 py-2 border border-text-secondary rounded-lg hover:bg-neutral-200 transition-colors"
         >
@@ -32,8 +35,8 @@ export function Servers() {
           <span className="font-manrope font-bold text-sm leading-6 text-high-contrast">
             Add server
           </span>
-        </button>
-      </div>
+        </motion.button>
+      </StaggerContainer>
 
       {isError ? (
         <div className="flex flex-col items-center gap-3 py-20">

@@ -37,6 +37,9 @@ pub enum AppError {
 
     #[error("job not found")]
     JobNotFound,
+
+    #[error("docker error: {0}")]
+    DockerConnection(String),
 }
 
 impl IntoResponse for AppError {
@@ -70,6 +73,10 @@ impl IntoResponse for AppError {
                 (StatusCode::INTERNAL_SERVER_ERROR, self.to_string())
             }
             AppError::JobNotFound => (StatusCode::NOT_FOUND, self.to_string()),
+            AppError::DockerConnection(e) => {
+                tracing::error!("docker error: {e}");
+                (StatusCode::INTERNAL_SERVER_ERROR, self.to_string())
+            }
         };
 
         (status, Json(json!({ "error": message }))).into_response()

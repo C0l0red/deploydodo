@@ -1,4 +1,6 @@
 import { Outlet, useNavigate, useRouter, useLocation } from '@tanstack/react-router'
+import { AnimatePresence } from 'framer-motion'
+import { PageTransition } from '@/components/Animated'
 import { Logo } from '@/components/Logo'
 import {
   SearchIcon,
@@ -16,7 +18,6 @@ import {
   NavLogoutIcon,
 } from '@/assets/icons'
 import type { ComponentType, SVGProps } from 'react'
-import { useLayoutEffect, useRef, useState } from 'react'
 import { cn } from '@/utilities/cn'
 
 type NavItemDef = {
@@ -30,7 +31,7 @@ const mainNavItems: NavItemDef[] = [
   { Icon: NavProjectsIcon, label: 'Projects', to: '/dashboard/projects' },
   { Icon: NavServersIcon, label: 'Servers', to: '/dashboard/servers' },
   { Icon: NavSourcesIcon, label: 'Sources', to: '/dashboard/sources' },
-  { Icon: NavDestinationsIcon, label: 'Destinations', to: '/dashboard/destinations' },
+  // { Icon: NavDestinationsIcon, label: 'Destinations', to: '/dashboard/destinations' },
   { Icon: NavSharedVariablesIcon, label: 'Shared Variables', to: '/dashboard/shared-variables' },
   { Icon: NavKeysIcon, label: 'Keys & Tokens', to: '/dashboard/keys' },
   { Icon: NavTerminalIcon, label: 'Terminal', to: '/dashboard/terminal' },
@@ -70,19 +71,6 @@ function NavItem({ Icon, label, to }: NavItemDef) {
 export function DashboardLayout() {
   const navigate = useNavigate()
   const location = useLocation()
-  const [ready, setReady] = useState(false)
-  const isFirstRender = useRef(true)
-
-  useLayoutEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false
-      setReady(true)
-      return
-    }
-    setReady(false)
-    const id = requestAnimationFrame(() => setReady(true))
-    return () => cancelAnimationFrame(id)
-  }, [location.pathname])
 
   return (
     <div className="h-screen bg-background flex flex-col">
@@ -140,13 +128,14 @@ export function DashboardLayout() {
           </div>
         </nav>
 
-        <main className="flex-1 p-8 overflow-y-auto">
-          <div
-            key={location.pathname}
-            className={`transition-all duration-150 ease-out ${ready ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1'}`}
-          >
-            <Outlet />
-          </div>
+        <main className="flex-1 overflow-y-auto">
+          <AnimatePresence mode="wait">
+            <PageTransition layoutKey={location.pathname}>
+              <div className="p-8">
+                <Outlet />
+              </div>
+            </PageTransition>
+          </AnimatePresence>
         </main>
       </div>
     </div>

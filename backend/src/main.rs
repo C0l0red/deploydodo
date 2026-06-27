@@ -45,6 +45,14 @@ async fn main() {
         .route("/api/status", get(routes::status::status))
         .route("/api/servers", get(routes::list_servers::list_servers))
         .route(
+            "/api/servers/{server_id}/containers",
+            get(routes::list_containers::list_containers),
+        )
+        .route(
+            "/api/servers/{server_id}/terminal",
+            get(routes::terminal::terminal_ws),
+        )
+        .route(
             "/api/auth/validate",
             get(routes::validate_session::validate_session),
         )

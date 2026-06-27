@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 russh = "0.60"
 thiserror = { workspace = true }
+tokio = { workspace = true }

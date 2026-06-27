@@ -7,7 +7,7 @@ use utoipa::ToSchema;
 
 use crate::error::AppError;
 
-#[derive(Debug, Serialize, Deserialize, ToSchema, sqlx::Type, Clone)]
+#[derive(Debug, Serialize, Deserialize, ToSchema, sqlx::Type, Clone, PartialEq)]
 #[serde(rename_all = "lowercase")]
 #[sqlx(type_name = "TEXT", rename_all = "lowercase")]
 pub enum ServerType {

@@ -1,3 +1,3 @@
 mod client;
 
-pub use client::{CommandOutput, DockerStatus, SshAuth, SshError, SshSession};
+pub use client::{CommandOutput, DockerStatus, DockerTunnel, SshAuth, SshError, SshSession};
