@@ -17,6 +17,9 @@ pub enum AppError {
     #[error("password hashing failed")]
     PasswordHash,
 
+    #[error("internal error occurred: {0}")]
+    InternalServerError(String),
+
     #[error("validation error: {0}")]
     Validation(String),
 

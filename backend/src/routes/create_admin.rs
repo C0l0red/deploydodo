@@ -86,7 +86,9 @@ pub async fn create_admin(
 
     let user_id = user.id.unwrap();
     let session_token = deps.session_service.create_session(user_id).await?;
-    deps.variables_service.set("is_admin_onboarded", "true").await?;
+    deps.variables_service
+        .set("is_admin_onboarded", "true")
+        .await?;
 
     tracing::info!(email = %user.email, id = %user_id, "admin user created");
 

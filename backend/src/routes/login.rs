@@ -2,7 +2,6 @@ use axum::{extract::State, http::StatusCode, Json};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
-use crate::services::user_service::UserService;
 use crate::{dependencies::Dependencies, error::AppError};
 
 #[derive(Deserialize, ToSchema)]
@@ -37,20 +36,15 @@ pub async fn login(
         .await?
         .ok_or(AppError::InvalidCredentials)?;
 
-    let valid =
-        UserService::verify_password(&request.password, &user.password_hash).map_err(|_| AppError::InvalidCredentials)?;
+    user.verify_password(&request.password)?;
 
-    if !valid {
-        return Err(AppError::InvalidCredentials);
+    if let Some(user_id) = user.id {
+        let session_token = deps.session_service.create_session(user_id).await?;
+
+        Ok((StatusCode::OK, Json(LoginResponse { session_token })))
+    } else {
+        Err(AppError::InternalServerError(
+            "id is None in User type".to_string(),
+        ))
     }
-
-    let session_token = deps
-        .session_service
-        .create_session(user.id.ok_or(AppError::InvalidCredentials)?)
-        .await?;
-
-    Ok((
-        StatusCode::OK,
-        Json(LoginResponse { session_token }),
-    ))
 }
