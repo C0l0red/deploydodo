@@ -88,7 +88,7 @@ async fn handle_socket(
                 let client_msg = serde_json::from_str::<ClientMessage>(&text);
                 match client_msg {
                     Ok(ClientMessage::Run { container, cmd }) => {
-                        current_container = container.clone();
+                        let current_container = container.clone();
 
                         // Handle cd locally (state tracking)
                         let cmd_trimmed = cmd.trim();
