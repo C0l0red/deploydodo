@@ -25,6 +25,7 @@ pub struct SshKey {
     pub public_key: Option<String>,
 }
 
+#[allow(dead_code)]
 impl SshKey {
     pub fn username(&self) -> &str {
         &self.username

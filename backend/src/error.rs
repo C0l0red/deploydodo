@@ -55,6 +55,10 @@ impl IntoResponse for AppError {
                     "Internal server error".to_string(),
                 )
             }
+            AppError::InternalServerError(_) => {
+                tracing::error!("internal error: {}", self.to_string());
+                (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string())
+            }
             AppError::AdminAlreadyConfigured => (StatusCode::CONFLICT, self.to_string()),
             AppError::PasswordHash => {
                 tracing::error!("password hashing failed");

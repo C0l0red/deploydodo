@@ -17,10 +17,6 @@ pub struct TerminalSession {
 pub struct TerminalService;
 
 impl TerminalService {
-    pub fn new() -> Self {
-        Self
-    }
-
     pub async fn connect(
         server: &Server,
         ssh_key: Option<&SshKey>,
@@ -156,11 +152,15 @@ impl TerminalService {
             while let Some(item) = stream.next().await {
                 match item {
                     Ok(bollard::container::LogOutput::StdOut { message })
-                    | Ok(bollard::container::LogOutput::StdErr { message })
                     | Ok(
                         bollard::container::LogOutput::Console { message },
                     ) => {
                         output.push(TerminalOutput::Stdout(
+                            String::from_utf8_lossy(&message).to_string(),
+                        ));
+                    }
+                    Ok(bollard::container::LogOutput::StdErr { message }) => {
+                        output.push(TerminalOutput::Stderr(
                             String::from_utf8_lossy(&message).to_string(),
                         ));
                     }

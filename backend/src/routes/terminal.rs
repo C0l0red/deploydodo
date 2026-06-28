@@ -80,7 +80,6 @@ async fn handle_socket(
     let docker = &session.docker;
 
     let mut current_dir = String::from("/");
-    let mut current_container = String::new();
 
     // Process commands from client
     while let Some(Ok(msg)) = socket.recv().await {
