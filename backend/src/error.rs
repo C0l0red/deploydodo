@@ -41,8 +41,14 @@ pub enum AppError {
     #[error("job not found")]
     JobNotFound,
 
-    #[error("docker error: {0}")]
-    DockerConnection(String),
+    #[error("local docker error: {0}")]
+    LocalDockerConnect(String),
+
+    #[error("remote docker via SSH error: {0}")]
+    RemoteDockerConnect(String),
+
+    #[error("docker operation error: {0}")]
+    DockerOperation(String),
 }
 
 impl IntoResponse for AppError {
@@ -80,8 +86,16 @@ impl IntoResponse for AppError {
                 (StatusCode::INTERNAL_SERVER_ERROR, self.to_string())
             }
             AppError::JobNotFound => (StatusCode::NOT_FOUND, self.to_string()),
-            AppError::DockerConnection(e) => {
-                tracing::error!("docker error: {e}");
+            AppError::LocalDockerConnect(e) => {
+                tracing::error!("local docker connect error: {e}");
+                (StatusCode::INTERNAL_SERVER_ERROR, self.to_string())
+            }
+            AppError::RemoteDockerConnect(e) => {
+                tracing::error!("remote docker connect error: {e}");
+                (StatusCode::INTERNAL_SERVER_ERROR, self.to_string())
+            }
+            AppError::DockerOperation(e) => {
+                tracing::error!("docker operation error: {e}");
                 (StatusCode::INTERNAL_SERVER_ERROR, self.to_string())
             }
         };

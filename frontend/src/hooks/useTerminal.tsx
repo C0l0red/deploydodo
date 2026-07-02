@@ -1,11 +1,4 @@
-import {
-  createContext,
-  useContext,
-  useRef,
-  useState,
-  useCallback,
-  type ReactNode,
-} from 'react'
+import { useRef, useState, useCallback } from 'react'
 
 export type TerminalMessage =
   | { type: 'stdout'; data: string }
@@ -15,31 +8,53 @@ export type TerminalMessage =
 
 type Listener = (msg: TerminalMessage) => void
 
-type TerminalContextValue = {
-  connected: boolean
-  connect: (serverId: number, token: string) => void
-  runCommand: (container: string, cmd: string) => Promise<TerminalMessage[]>
-  disconnect: () => void
-  addListener: (fn: Listener) => void
-  removeListener: (fn: Listener) => void
+type PendingRequest = {
+  resolve: (msgs: TerminalMessage[]) => void
+  messages: TerminalMessage[]
 }
 
-const TerminalContext = createContext<TerminalContextValue | null>(null)
+const PING_INTERVAL_MS = 30_000
 
-export function useTerminalContext() {
-  const ctx = useContext(TerminalContext)
-  if (!ctx) throw new Error('Missing TerminalProvider')
-  return ctx
+function routeMessage(
+  msg: TerminalMessage,
+  pending: PendingRequest | null,
+  notify: (msg: TerminalMessage) => void,
+  clearPending: () => void,
+) {
+  switch (msg.type) {
+    case 'stdout':
+    case 'stderr':
+      if (pending) {
+        pending.messages.push(msg)
+      } else {
+        notify(msg)
+      }
+      break
+    case 'error':
+      if (pending) {
+        pending.messages.push(msg)
+        pending.resolve([...pending.messages])
+        clearPending()
+      } else {
+        notify(msg)
+      }
+      break
+    case 'cd':
+      if (pending) {
+        pending.messages.push(msg)
+        pending.resolve([...pending.messages])
+        clearPending()
+      }
+      break
+  }
 }
 
-export function TerminalProvider({ children }: { children: ReactNode }) {
+export function useTerminalSocket() {
   const wsRef = useRef<WebSocket | null>(null)
-  const [connected, setConnected] = useState(false)
-  const pendingRef = useRef<{
-    resolve: (msgs: TerminalMessage[]) => void
-    messages: TerminalMessage[]
-  } | null>(null)
+  const pingRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const pendingRef = useRef<PendingRequest | null>(null)
   const listenersRef = useRef<Set<Listener>>(new Set())
+  const [connected, setConnected] = useState(false)
 
   const addListener = useCallback((fn: Listener) => {
     listenersRef.current.add(fn)
@@ -53,9 +68,38 @@ export function TerminalProvider({ children }: { children: ReactNode }) {
     listenersRef.current.forEach((fn) => fn(msg))
   }, [])
 
+  const clearPending = useCallback(() => {
+    pendingRef.current = null
+  }, [])
+
+  const stopPing = useCallback(() => {
+    if (pingRef.current !== null) {
+      clearInterval(pingRef.current)
+      pingRef.current = null
+    }
+  }, [])
+
+  const startPing = useCallback(() => {
+    stopPing()
+    pingRef.current = setInterval(() => {
+      const ws = wsRef.current
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'ping' }))
+      }
+    }, PING_INTERVAL_MS)
+  }, [stopPing])
+
+  const disconnect = useCallback(() => {
+    stopPing()
+    wsRef.current?.close()
+    wsRef.current = null
+    setConnected(false)
+    pendingRef.current = null
+  }, [stopPing])
+
   const connect = useCallback(
     (serverId: number, token: string) => {
-      // Close existing connection if any
+      stopPing()
       wsRef.current?.close()
       pendingRef.current = null
 
@@ -66,53 +110,45 @@ export function TerminalProvider({ children }: { children: ReactNode }) {
       const ws = new WebSocket(url)
       wsRef.current = ws
 
-      ws.onopen = () => setConnected(true)
+      ws.onopen = () => {
+        setConnected(true)
+        startPing()
+      }
 
       ws.onmessage = (e) => {
         try {
           const msg = JSON.parse(e.data) as TerminalMessage | { type: 'done' }
-          if (msg.type === 'stdout' || msg.type === 'stderr') {
-            const pending = pendingRef.current
-            if (pending) {
-              pending.messages.push(msg)
-            } else {
-              notify(msg)
-            }
-          } else if (msg.type === 'error') {
-            const pending = pendingRef.current
-            if (pending) {
-              pending.messages.push(msg)
-              pending.resolve([...pending.messages])
-              pendingRef.current = null
-            } else {
-              notify(msg)
-            }
-          } else if (msg.type === 'done') {
+          if (msg.type === 'done') {
             const pending = pendingRef.current
             if (pending) {
               pending.resolve([...pending.messages])
-              pendingRef.current = null
+              clearPending()
             }
-          } else if (msg.type === 'cd') {
-            const pending = pendingRef.current
-            if (pending) {
-              pending.messages.push(msg)
-              pending.resolve([...pending.messages])
-              pendingRef.current = null
-            }
+            return
           }
+          routeMessage(
+            msg as TerminalMessage,
+            pendingRef.current,
+            notify,
+            clearPending,
+          )
         } catch {
           // ignore parse errors
         }
       }
 
       ws.onclose = () => {
+        stopPing()
         setConnected(false)
         pendingRef.current = null
       }
-      ws.onerror = () => setConnected(false)
+
+      ws.onerror = () => {
+        stopPing()
+        setConnected(false)
+      }
     },
-    [notify],
+    [notify, clearPending, startPing, stopPing],
   )
 
   const runCommand = useCallback(
@@ -132,24 +168,12 @@ export function TerminalProvider({ children }: { children: ReactNode }) {
     [],
   )
 
-  const disconnect = useCallback(() => {
-    wsRef.current?.close()
-    wsRef.current = null
-    setConnected(false)
-  }, [])
-
-  return (
-    <TerminalContext.Provider
-      value={{
-        connected,
-        connect,
-        runCommand,
-        disconnect,
-        addListener,
-        removeListener,
-      }}
-    >
-      {children}
-    </TerminalContext.Provider>
-  )
+  return {
+    connected,
+    connect,
+    disconnect,
+    runCommand,
+    addListener,
+    removeListener,
+  }
 }

@@ -6,8 +6,9 @@ use utoipa::ToSchema;
 
 use crate::dependencies::Dependencies;
 use crate::error::AppError;
-use crate::services::terminal_service::TerminalService;
-use crate::services::types::{ContainerInfo, ServerType};
+use crate::services::terminal_service::connect;
+use crate::services::terminal_service::resolve_ssh_key;
+use crate::services::types::ContainerInfo;
 
 #[derive(Serialize, ToSchema)]
 pub struct ContainerListResponse {
@@ -31,23 +32,10 @@ pub async fn list_containers(
     State(deps): State<Dependencies>,
     Path(server_id): Path<i64>,
 ) -> Result<(StatusCode, Json<ContainerListResponse>), AppError> {
-    let servers = deps.server_service.list_servers().await?;
-    let server = servers
-        .into_iter()
-        .find(|s| s.id == server_id)
-        .ok_or(AppError::Validation("Server not found".into()))?;
-
-    let ssh_key = if server.server_type == ServerType::Remote {
-        let key_id = server.ssh_key_id.ok_or(AppError::Validation(
-            "No SSH key for remote server".into(),
-        ))?;
-        Some(deps.ssh_service.get_key_by_id(key_id).await?)
-    } else {
-        None
-    };
-
-    let session = TerminalService::connect(&server, ssh_key.as_ref()).await?;
-    let containers = TerminalService::list_containers(&session.docker).await?;
+    let server = deps.server_service.get_server_by_id(server_id).await?;
+    let ssh_key = resolve_ssh_key(&server, &deps.ssh_service).await?;
+    let session = connect(&server, ssh_key.as_ref()).await?;
+    let containers = session.list_containers().await?;
 
     Ok((
         StatusCode::OK,

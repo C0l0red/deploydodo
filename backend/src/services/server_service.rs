@@ -67,6 +67,26 @@ impl ServerService {
         })
     }
 
+    pub async fn get_server_by_id(&self, server_id: i64) -> Result<Server, AppError> {
+        let row = sqlx::query(
+            "SELECT id, name, server_type, hostname, ssh_port, ssh_key_id FROM servers WHERE id = $1",
+        )
+        .bind(server_id)
+        .fetch_optional(&*self.db)
+        .await
+        .map_err(AppError::Database)?
+        .ok_or(AppError::Validation("Server not found".into()))?;
+
+        Ok(Server {
+            id: row.try_get("id").map_err(AppError::Database)?,
+            name: row.try_get("name").map_err(AppError::Database)?,
+            server_type: row.try_get("server_type").map_err(AppError::Database)?,
+            hostname: row.try_get("hostname").map_err(AppError::Database)?,
+            ssh_port: row.try_get("ssh_port").map_err(AppError::Database)?,
+            ssh_key_id: row.try_get("ssh_key_id").map_err(AppError::Database)?,
+        })
+    }
+
     pub async fn list_servers(&self) -> Result<Vec<Server>, AppError> {
         let rows = sqlx::query(
             "SELECT id, name, server_type, hostname, ssh_port, ssh_key_id FROM servers ORDER BY id",

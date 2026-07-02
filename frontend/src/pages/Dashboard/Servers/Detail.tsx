@@ -126,14 +126,13 @@ export function ServerDetail() {
 
       {/* ─── TAB CONTENT ──────────────────────────────────────────────────── */}
       <div className="mt-4">
-        {isTerminal ? null : (
+        {isTerminal ? (
+          <TerminalTab serverId={Number(serverId)} />
+        ) : (
           <TabTransition tabKey={activeTab}>
             {renderTabContent()}
           </TabTransition>
         )}
-        <div className={isTerminal ? '' : 'hidden'}>
-          <TerminalTab serverId={Number(serverId)} />
-        </div>
       </div>
     </div>
   )
