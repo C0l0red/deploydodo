@@ -3,9 +3,9 @@ use crate::error::AppError;
 use crate::services::terminal_service::{connect, resolve_ssh_key, TerminalSession};
 
 pub async fn establish_terminal_session(
-    deps: &Dependencies,
     server_id: i64,
     token: &str,
+    deps: &Dependencies,
 ) -> Result<TerminalSession, AppError> {
     let valid = deps.session_service.validate_session(token.trim()).await?;
     if !valid {

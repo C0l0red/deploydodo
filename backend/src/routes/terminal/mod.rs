@@ -21,7 +21,7 @@ pub async fn terminal_ws(
 ) -> impl IntoResponse {
     let token = params.token.clone();
     ws.on_upgrade(move |socket| async move {
-        if let Err(e) = handler::handle_socket(socket, deps, server_id, token).await {
+        if let Err(e) = handler::handle_socket(socket, server_id, token, deps).await {
             tracing::error!(error = %e, "terminal ws error");
         }
     })

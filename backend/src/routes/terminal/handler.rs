@@ -11,11 +11,11 @@ use crate::services::terminal_service::{TerminalOutput, TerminalSession};
 
 pub async fn handle_socket(
     mut socket: WebSocket,
-    deps: Dependencies,
     server_id: i64,
     token: String,
+    deps: Dependencies,
 ) -> Result<(), crate::error::AppError> {
-    let session = establish_terminal_session(&deps, server_id, &token).await?;
+    let session = establish_terminal_session(server_id, &token, &deps).await?;
     let mut current_dir = String::from("/");
 
     while let Some(Ok(msg)) = socket.recv().await {
