@@ -5,7 +5,10 @@ use serde::{Deserialize, Serialize};
 use sqlx::{Row, SqlitePool};
 use utoipa::ToSchema;
 
-use crate::error::AppError;
+use crate::{
+    error::{AppError, AppResult},
+    services::{server_service::Server, types::ServerType},
+};
 
 #[derive(Debug, Serialize, Deserialize, ToSchema, sqlx::Type, Clone)]
 #[serde(rename_all = "lowercase")]
@@ -38,6 +41,20 @@ impl SshKey {
                 .private_key
                 .as_deref()
                 .ok_or(AppError::MissingKeySecret),
+        }
+    }
+}
+
+impl<'a> TryFrom<&'a SshKey> for dodosh::SshAuth<'a> {
+    type Error = AppError;
+
+    fn try_from(value: &'a SshKey) -> AppResult<Self> {
+        match value.auth_type {
+            AuthType::KeyPair => Ok(Self::Key {
+                private_key: value.get_secret()?,
+                passphrase: None,
+            }),
+            AuthType::Password => Ok(Self::Password(value.get_secret()?)),
         }
     }
 }
@@ -111,7 +128,7 @@ impl SshService {
         })
     }
 
-    pub async fn get_key_by_id(&self, key_id: i64) -> Result<SshKey, AppError> {
+    pub async fn get_key_by_id(&self, key_id: i64) -> AppResult<SshKey> {
         let row = sqlx::query(
             "SELECT id, name, username, auth_type, password, private_key, public_key FROM ssh_keys WHERE id = $1",
         )
@@ -131,5 +148,20 @@ impl SshService {
             private_key: row.try_get("private_key").ok(),
             public_key: row.try_get("public_key").ok(),
         })
+    }
+
+    pub async fn get_key_for_server(&self, server: &Server) -> AppResult<SshKey> {
+        match server.server_type {
+            ServerType::Local => Err(AppError::Validation(
+                "No SSH key available for local server".to_string(),
+            )),
+            ServerType::Remote => {
+                let key_id = server.ssh_key_id.ok_or(AppError::InternalServerError(
+                    "SSH key missing for remote server".into(),
+                ))?;
+
+                self.get_key_by_id(key_id).await
+            }
+        }
     }
 }

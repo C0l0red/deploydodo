@@ -1,23 +1,15 @@
-use serde::{Deserialize, Serialize};
-
-#[derive(Deserialize)]
-#[serde(tag = "type", rename_all = "lowercase")]
-pub enum ClientMessage {
-    Run { container: String, cmd: String },
-    Ping,
-}
-
-#[derive(Serialize)]
-#[serde(tag = "type", rename_all = "lowercase")]
-pub enum ServerMessage {
-    Stdout { data: String },
-    Stderr { data: String },
-    Error { message: String },
-    Done,
-    Cd { dir: String },
-}
+use dodosh::terminal::TermSize;
+use serde::Deserialize;
 
 #[derive(Deserialize)]
 pub struct TerminalParams {
+    pub cols: u32,
+    pub rows: u32,
     pub token: String,
+}
+
+impl From<TerminalParams> for TermSize {
+    fn from(value: TerminalParams) -> Self {
+        Self::dims(value.cols, value.rows)
+    }
 }

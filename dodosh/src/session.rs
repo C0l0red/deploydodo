@@ -22,7 +22,64 @@ impl client::Handler for Handler {
 }
 
 pub struct SshSession {
-    pub handle: Arc<client::Handle<Handler>>,
+    handle: Arc<client::Handle<Handler>>,
+}
+
+pub struct SshTimeout {
+    inactivity_secs: Option<u64>,
+    keepalive_secs: Option<u64>,
+    keepalive_max: usize,
+}
+
+#[derive(Default)]
+struct SshTimeoutBuilder {
+    inactivity_secs: Option<u64>,
+    keepalive_secs: Option<u64>,
+    keepalive_max: Option<usize>,
+}
+
+impl SshTimeout {
+    #[allow(private_interfaces)]
+    pub fn builder() -> SshTimeoutBuilder {
+        SshTimeoutBuilder::default()
+    }
+
+    pub fn none() -> Self {
+        Self::builder().build()
+    }
+
+    pub fn keepalive_secs(secs: u64) -> Self {
+        Self::builder().keepalive_secs(secs).build()
+    }
+
+    pub fn inactivity_secs(secs: u64) -> Self {
+        Self::builder().inactivity_secs(secs).build()
+    }
+}
+
+impl SshTimeoutBuilder {
+    pub fn inactivity_secs(&mut self, secs: u64) -> &Self {
+        self.inactivity_secs = Some(secs);
+        self
+    }
+
+    pub fn keepalive_secs(&mut self, secs: u64) -> &Self {
+        self.keepalive_secs = Some(secs);
+        self
+    }
+
+    pub fn keepalive_max(&mut self, max: usize) -> &Self {
+        self.keepalive_max = Some(max);
+        self
+    }
+
+    pub fn build(&self) -> SshTimeout {
+        SshTimeout {
+            inactivity_secs: self.inactivity_secs,
+            keepalive_secs: self.keepalive_secs,
+            keepalive_max: self.keepalive_max.unwrap_or(5),
+        }
+    }
 }
 
 impl SshSession {
@@ -37,9 +94,9 @@ impl SshSession {
         port: u16,
         username: &str,
         auth: SshAuth<'_>,
-        timeout: Option<Duration>,
+        timeout_config: SshTimeout,
     ) -> Result<Self, SshError> {
-        session_init(hostname, port, username, auth, timeout).await
+        session_init(hostname, port, username, auth, timeout_config).await
     }
 
     pub async fn disconnect(&self) -> Result<(), SshError> {
@@ -91,8 +148,12 @@ impl SshSession {
         })
     }
 
+    pub async fn open_channel(&self) -> Result<russh::Channel<russh::client::Msg>, SshError> {
+        Ok(self.handle.channel_open_session().await?)
+    }
+
     pub async fn run_command(&self, command: &str) -> Result<CommandOutput, SshError> {
-        let mut channel = self.handle.channel_open_session().await?;
+        let mut channel = self.open_channel().await?;
         channel.exec(true, command).await?;
 
         let mut stdout = String::new();
@@ -115,9 +176,7 @@ impl SshSession {
         Ok(CommandOutput { stdout, exit_code })
     }
 
-    pub async fn forward_docker_socket(
-        &self,
-    ) -> Result<super::tunnel::DockerTunnel, SshError> {
+    pub async fn forward_docker_socket(&self) -> Result<super::tunnel::DockerTunnel, SshError> {
         super::tunnel::forward_docker_socket(self.handle.clone()).await
     }
 }
@@ -127,19 +186,19 @@ async fn session_init(
     port: u16,
     username: &str,
     auth: SshAuth<'_>,
-    timeout: Option<Duration>,
+    timeout_config: SshTimeout,
 ) -> Result<SshSession, SshError> {
     let config = Arc::new(client::Config {
-        inactivity_timeout: timeout.or(Some(Duration::from_secs(10))),
+        inactivity_timeout: timeout_config.inactivity_secs.map(Duration::from_secs),
+        keepalive_interval: timeout_config.keepalive_secs.map(Duration::from_secs),
+        keepalive_max: timeout_config.keepalive_max,
         ..<_>::default()
     });
 
     let mut handle = client::connect(config, (hostname, port), Handler).await?;
 
     let authenticated = match auth {
-        SshAuth::Password(password) => {
-            handle.authenticate_password(username, password).await?
-        }
+        SshAuth::Password(password) => handle.authenticate_password(username, password).await?,
         SshAuth::Key {
             private_key,
             passphrase,
@@ -147,10 +206,7 @@ async fn session_init(
             let key = decode_secret_key(private_key, passphrase)?;
             let hash = handle.best_supported_rsa_hash().await?.flatten();
             handle
-                .authenticate_publickey(
-                    username,
-                    PrivateKeyWithHashAlg::new(Arc::new(key), hash),
-                )
+                .authenticate_publickey(username, PrivateKeyWithHashAlg::new(Arc::new(key), hash))
                 .await?
         }
     };

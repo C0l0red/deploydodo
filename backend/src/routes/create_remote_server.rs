@@ -1,7 +1,5 @@
-use std::time::Duration;
-
 use axum::{extract::State, http::StatusCode, Json};
-use dodosh::{SshAuth, SshSession};
+use dodosh::{SshAuth, SshSession, SshTimeout};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use utoipa::ToSchema;
@@ -234,7 +232,7 @@ async fn handle_remote(
         *port,
         auth.get_username(),
         auth.get_ssh_auth(),
-        Some(Duration::from_mins(5)),
+        SshTimeout::inactivity_secs(300),
     )
     .await?;
 

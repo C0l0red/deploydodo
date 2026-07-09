@@ -3,7 +3,6 @@ pub mod create_local_server;
 pub mod create_remote_server;
 pub mod health;
 pub mod job_events;
-pub mod list_containers;
 pub mod list_servers;
 pub mod login;
 pub mod status;
