@@ -48,5 +48,8 @@ async fn remote_terminal_init(
 }
 
 fn local_terminal_init() -> AppResult<terminal::Terminal> {
-    terminal::connect_local(shell, size)
+    // terminal::connect_local(shell, size).await
+    Err(AppError::InternalServerError(
+        "local terminal error".to_string(),
+    ))
 }
