@@ -27,7 +27,7 @@ export function useTerminalSocket(
 
     const term = new Terminal({
       cursorBlink: true,
-      fontFamily: 'Manrope, ui-monospace, SFMono-Regular, Menlo, monospace',
+      fontFamily: 'Ubuntu, ui-monospace, SFMono-Regular, Menlo, monospace',
       fontSize: 13,
       theme: { background: '#181818', foreground: '#e2e2e2' },
     })
@@ -35,8 +35,6 @@ export function useTerminalSocket(
     term.loadAddon(fit)
     term.open(container)
 
-    // Measure the terminal so we can hand the real cols/rows to the backend
-    // before the PTY is created.
     fit.fit()
 
     const token = localStorage.getItem('session_token') ?? ''
@@ -52,7 +50,6 @@ export function useTerminalSocket(
     ws.onopen = () => onStatusRef.current?.('open')
     ws.onclose = () => onStatusRef.current?.('closed')
 
-    // Shell output → terminal. Backend may send text frames or binary chunks.
     ws.onmessage = (e) => {
       if (typeof e.data === 'string') {
         term.write(e.data)
@@ -61,15 +58,11 @@ export function useTerminalSocket(
       }
     }
 
-    // Keystrokes → shell, sent as binary frames so they never collide with the
-    // JSON control frames below.
     const encoder = new TextEncoder()
     const dataSub = term.onData((data) => {
       if (ws.readyState === WebSocket.OPEN) ws.send(encoder.encode(data))
     })
 
-    // Re-fit on container resize and tell the backend the new PTY size via a
-    // text control frame. Debounced so a drag doesn't spam resize messages.
     let resizeTimer: ReturnType<typeof setTimeout> | undefined
     const resizeObserver = new ResizeObserver(() => {
       clearTimeout(resizeTimer)
@@ -77,7 +70,7 @@ export function useTerminalSocket(
         try {
           fit.fit()
         } catch {
-          return // container not laid out yet — ignore
+          return
         }
         if (ws.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }))
