@@ -32,13 +32,14 @@ pub struct SshTimeout {
 }
 
 #[derive(Default)]
-pub struct SshTimeoutBuilder {
+struct SshTimeoutBuilder {
     inactivity_secs: Option<u64>,
     keepalive_secs: Option<u64>,
     keepalive_max: Option<usize>,
 }
 
 impl SshTimeout {
+    #[allow(private_interfaces)]
     pub fn builder() -> SshTimeoutBuilder {
         SshTimeoutBuilder::default()
     }
