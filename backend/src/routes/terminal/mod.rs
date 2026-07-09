@@ -2,7 +2,7 @@ mod handler;
 mod session;
 mod types;
 
-pub use types::TerminalParams;
+pub use types::{ControlMessage, TerminalParams};
 
 use axum::extract::ws::WebSocketUpgrade;
 use axum::extract::{Path, Query, State};
