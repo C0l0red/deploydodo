@@ -1,4 +1,4 @@
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum SshAuth<'a> {
     Password(&'a str),
     Key {
@@ -7,13 +7,13 @@ pub enum SshAuth<'a> {
     },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct DockerStatus {
     pub is_installed: bool,
     pub is_running: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct CommandOutput {
     pub stdout: String,
     pub exit_code: u32,
