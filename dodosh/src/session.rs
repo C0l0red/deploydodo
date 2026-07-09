@@ -32,14 +32,13 @@ pub struct SshTimeout {
 }
 
 #[derive(Default)]
-struct SshTimeoutBuilder {
+pub struct SshTimeoutBuilder {
     inactivity_secs: Option<u64>,
     keepalive_secs: Option<u64>,
     keepalive_max: Option<usize>,
 }
 
 impl SshTimeout {
-    #[allow(private_interfaces)]
     pub fn builder() -> SshTimeoutBuilder {
         SshTimeoutBuilder::default()
     }
@@ -65,11 +64,6 @@ impl SshTimeoutBuilder {
 
     pub fn keepalive_secs(&mut self, secs: u64) -> &Self {
         self.keepalive_secs = Some(secs);
-        self
-    }
-
-    pub fn keepalive_max(&mut self, max: usize) -> &Self {
-        self.keepalive_max = Some(max);
         self
     }
 
@@ -176,8 +170,8 @@ impl SshSession {
         Ok(CommandOutput { stdout, exit_code })
     }
 
-    pub async fn forward_docker_socket(&self) -> Result<super::tunnel::DockerTunnel, SshError> {
-        super::tunnel::forward_docker_socket(self.handle.clone()).await
+    pub async fn forward_docker_socket(&self) -> Result<crate::DockerTunnel, SshError> {
+        crate::forward_docker_socket(self.handle.clone()).await
     }
 }
 
