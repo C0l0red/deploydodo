@@ -26,10 +26,8 @@ pub struct Server {
 }
 
 impl Server {
-    pub fn ssh_port(&self) -> AppResult<u16> {
-        self.ssh_port.ok_or(AppError::InternalServerError(
-            "ssh_port of Server is None".to_string(),
-        ))
+    pub fn ssh_port(&self) -> u16 {
+        self.ssh_port.unwrap_or(22)
     }
 }
 
@@ -55,11 +53,12 @@ impl ServerService {
         hostname: &str,
     ) -> Result<Server, AppError> {
         let id: i64 = sqlx::query_scalar(
-            "INSERT INTO servers (name, server_type, hostname, created_at) VALUES ($1, $2, $3, $4) RETURNING id",
+            "INSERT INTO servers (name, server_type, hostname, ssh_port, created_at) VALUES ($1, $2, $3, $4, $5) RETURNING id",
         )
         .bind(name)
         .bind(ServerType::Local)
         .bind(hostname)
+        .bind(22)
         .bind(Utc::now())
         .fetch_one(&*self.db)
         .await

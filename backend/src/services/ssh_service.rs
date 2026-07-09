@@ -61,11 +61,28 @@ impl<'a> TryFrom<&'a SshKey> for dodosh::SshAuth<'a> {
 
 pub struct SshService {
     db: Arc<SqlitePool>,
+    host_ssh_username: String,
+    host_ssh_private_key: String,
 }
 
 impl SshService {
     pub fn new(db: Arc<SqlitePool>) -> Self {
-        Self { db }
+        let host_ssh_username = std::env::var("HOST_SSH_USERNAME")
+            .expect("The variable HOST_SSH_USERNAME must be present at runtime");
+
+        let host_ssh_private_key = std::env::var("HOST_SSH_PRIVATE_KEY")
+            .ok()
+            .map(|path| {
+                std::fs::read_to_string(path)
+                    .expect("The path stored in HOST_SSH_PRIVATE_KEY does not exist")
+            })
+            .expect("The variable HOST_SSH_PRIVATE_KEY must be present at runtime");
+
+        Self {
+            db,
+            host_ssh_username,
+            host_ssh_private_key,
+        }
     }
 
     pub async fn create_password_auth(
@@ -152,9 +169,15 @@ impl SshService {
 
     pub async fn get_key_for_server(&self, server: &Server) -> AppResult<SshKey> {
         match server.server_type {
-            ServerType::Local => Err(AppError::Validation(
-                "No SSH key available for local server".to_string(),
-            )),
+            ServerType::Local => Ok(SshKey {
+                id: 0,
+                name: "local-server".to_string(),
+                username: self.host_ssh_username.clone(),
+                auth_type: AuthType::KeyPair,
+                password: None,
+                private_key: Some(self.host_ssh_private_key.clone()),
+                public_key: None,
+            }),
             ServerType::Remote => {
                 let key_id = server.ssh_key_id.ok_or(AppError::InternalServerError(
                     "SSH key missing for remote server".into(),
