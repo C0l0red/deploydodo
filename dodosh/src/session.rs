@@ -171,7 +171,7 @@ impl SshSession {
         Ok(CommandOutput { stdout, exit_code })
     }
 
-    pub async fn forward_docker_socket(&self) -> Result<crate::DockerTunnel, SshError> {
+    pub async fn forward_docker_socket(&self) -> Result<crate::DockerTunnel, ShellError> {
         crate::forward_docker_socket(self.handle.clone()).await
     }
 }
