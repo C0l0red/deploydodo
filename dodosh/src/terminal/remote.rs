@@ -4,7 +4,7 @@ use tokio::time;
 use crate::{
     session::SshTimeout,
     terminal::{self, TermSize},
-    SshAuth, SshError, SshSession,
+    SshAuth, ShellError, SshSession,
 };
 
 pub async fn connect_remote(
@@ -14,7 +14,7 @@ pub async fn connect_remote(
     auth: SshAuth<'_>,
     size: TermSize,
     timeout_config: SshTimeout,
-) -> Result<terminal::Terminal, SshError> {
+) -> Result<terminal::Terminal, ShellError> {
     let session = SshSession::connect(hostname, port, username, auth, timeout_config).await?;
 
     let channel = session.open_channel().await?;
@@ -34,7 +34,7 @@ pub async fn connect_remote(
 pub async fn remote_write(
     channel: &russh::Channel<russh::client::Msg>,
     input: &[u8],
-) -> Result<(), SshError> {
+) -> Result<(), ShellError> {
     Ok(channel.data(input).await?)
 }
 
@@ -52,6 +52,6 @@ pub async fn remote_resize(
     channel: &russh::Channel<russh::client::Msg>,
     cols: u32,
     rows: u32,
-) -> Result<(), SshError> {
+) -> Result<(), ShellError> {
     Ok(channel.window_change(cols, rows, 0, 0).await?)
 }

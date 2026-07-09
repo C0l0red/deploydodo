@@ -5,7 +5,7 @@ use russh::client;
 use russh::keys::ssh_key::PublicKey;
 use russh::keys::{decode_secret_key, PrivateKeyWithHashAlg};
 
-use super::error::SshError;
+use super::error::ShellError;
 use super::types::{CommandOutput, DockerStatus, SshAuth};
 
 pub struct Handler;
@@ -90,11 +90,11 @@ impl SshSession {
         username: &str,
         auth: SshAuth<'_>,
         timeout_config: SshTimeout,
-    ) -> Result<Self, SshError> {
+    ) -> Result<Self, ShellError> {
         session_init(hostname, port, username, auth, timeout_config).await
     }
 
-    pub async fn disconnect(&self) -> Result<(), SshError> {
+    pub async fn disconnect(&self) -> Result<(), ShellError> {
         self.handle
             .disconnect(
                 russh::Disconnect::ByApplication,
@@ -102,10 +102,10 @@ impl SshSession {
                 "English",
             )
             .await
-            .map_err(SshError::Ssh)
+            .map_err(ShellError::Ssh)
     }
 
-    pub async fn check_root_access(&self) -> Result<bool, SshError> {
+    pub async fn check_root_access(&self) -> Result<bool, ShellError> {
         let id_output = self.run_command("id -u").await?;
 
         if id_output.exit_code == 0 && id_output.stdout.trim() == "0" {
@@ -117,7 +117,7 @@ impl SshSession {
         Ok(sudo_output.exit_code == 0)
     }
 
-    pub async fn is_docker_installed_via_snap(&self) -> Result<bool, SshError> {
+    pub async fn is_docker_installed_via_snap(&self) -> Result<bool, ShellError> {
         let which = self.run_command("which docker").await?;
         if which.exit_code == 0 && which.stdout.contains("/snap/") {
             return Ok(true);
@@ -127,7 +127,7 @@ impl SshSession {
         Ok(snap.exit_code == 0)
     }
 
-    pub async fn check_docker(&self) -> Result<DockerStatus, SshError> {
+    pub async fn check_docker(&self) -> Result<DockerStatus, ShellError> {
         let which = self.run_command("command -v docker").await?;
         if which.exit_code != 0 {
             return Ok(DockerStatus {
@@ -143,11 +143,11 @@ impl SshSession {
         })
     }
 
-    pub async fn open_channel(&self) -> Result<russh::Channel<russh::client::Msg>, SshError> {
+    pub async fn open_channel(&self) -> Result<russh::Channel<russh::client::Msg>, ShellError> {
         Ok(self.handle.channel_open_session().await?)
     }
 
-    pub async fn run_command(&self, command: &str) -> Result<CommandOutput, SshError> {
+    pub async fn run_command(&self, command: &str) -> Result<CommandOutput, ShellError> {
         let mut channel = self.open_channel().await?;
         channel.exec(true, command).await?;
 
@@ -182,7 +182,7 @@ async fn session_init(
     username: &str,
     auth: SshAuth<'_>,
     timeout_config: SshTimeout,
-) -> Result<SshSession, SshError> {
+) -> Result<SshSession, ShellError> {
     let config = Arc::new(client::Config {
         inactivity_timeout: timeout_config.inactivity_secs.map(Duration::from_secs),
         keepalive_interval: timeout_config.keepalive_secs.map(Duration::from_secs),
@@ -207,7 +207,7 @@ async fn session_init(
     };
 
     if !authenticated.success() {
-        return Err(SshError::AuthFailed);
+        return Err(ShellError::AuthFailed);
     }
 
     Ok(SshSession::new(handle))

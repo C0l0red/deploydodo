@@ -21,11 +21,13 @@ pub async fn terminal_init(
     }
 
     let server = deps.server_service.get_server_by_id(server_id).await?;
-    let ssh_key = deps.ssh_service.get_key_for_server(&server).await?;
 
     match server.server_type {
         ServerType::Local => local_terminal_init(),
-        ServerType::Remote => remote_terminal_init(server, params, ssh_key).await,
+        ServerType::Remote => {
+            let ssh_key = deps.ssh_service.get_key_for_server(&server).await?;
+            remote_terminal_init(server, params, ssh_key).await
+        }
     }
 }
 
@@ -46,7 +48,5 @@ async fn remote_terminal_init(
 }
 
 fn local_terminal_init() -> AppResult<terminal::Terminal> {
-    Err(AppError::InternalServerError(
-        "local terminal could not be initialized".to_string(),
-    ))
+    terminal::connect_local(shell, size)
 }

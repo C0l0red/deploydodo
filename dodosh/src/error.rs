@@ -2,7 +2,9 @@ use thiserror::Error;
 use tokio::time;
 
 #[derive(Debug, Error)]
-pub enum SshError {
+pub enum ShellError {
+    #[error("pty process error: {0}")]
+    PtyProcess(#[from] pty_process::Error),
     #[error("ssh error: {0}")]
     Ssh(#[from] russh::Error),
     #[error("timeout error: {0}")]

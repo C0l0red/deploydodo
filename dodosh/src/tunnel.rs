@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use russh::client;
 
-use super::error::SshError;
+use super::error::ShellError;
 use super::session::Handler;
 
 pub struct DockerTunnel {
@@ -18,7 +18,7 @@ impl Drop for DockerTunnel {
 
 pub async fn forward_docker_socket(
     handle: Arc<client::Handle<Handler>>,
-) -> Result<DockerTunnel, SshError> {
+) -> Result<DockerTunnel, ShellError> {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
     let local_port = listener.local_addr()?.port();
 
@@ -42,7 +42,7 @@ pub async fn forward_docker_socket(
 async fn forward_single(
     tcp: tokio::net::TcpStream,
     handle: Arc<client::Handle<Handler>>,
-) -> Result<(), SshError> {
+) -> Result<(), ShellError> {
     let mut channel = handle
         .channel_open_direct_streamlocal("/var/run/docker.sock")
         .await?;
