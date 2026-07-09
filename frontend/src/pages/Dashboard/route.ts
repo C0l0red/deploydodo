@@ -1,6 +1,6 @@
 import { createRoute } from '@tanstack/react-router'
 import { requireAuth, rootRoute } from '@/routeConfig'
-import { DashboardLayout } from '@/layouts/DashboardLayout'
+import { DashboardLayout } from './DashboardLayout'
 import { DashboardIndex } from './DashboardIndex'
 import { Projects } from './Projects'
 import { Servers } from './Servers'

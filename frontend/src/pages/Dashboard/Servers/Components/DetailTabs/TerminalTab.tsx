@@ -1,128 +1,205 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { SectionCard, SectionHeader } from '..'
+import { useTerminalSocket } from '@/hooks/useTerminal'
+import type { TerminalMessage } from '@/hooks/useTerminal'
+import { useContainersQuery } from '@/api/queries'
+import {
+  type Line,
+  LineView,
+} from './terminal/TerminalOutput'
+import { TerminalPrompt } from './terminal/TerminalPrompt'
+import { useAutoConnect } from './terminal/useAutoConnect'
+import { useAutoScroll } from './terminal/useAutoScroll'
+import { useTerminalScroll } from './terminal/useTerminalScroll'
 
-export function TerminalTab() {
-  const [terminalLines, setTerminalLines] = useState<string[]>([])
+type Props = {
+  serverId: number
+}
+
+function applyMessageToState(
+  msg: TerminalMessage,
+  setLines: React.Dispatch<React.SetStateAction<Line[]>>,
+  setCurrentDir: React.Dispatch<React.SetStateAction<string>>,
+  setError: React.Dispatch<React.SetStateAction<string | null>>,
+) {
+  switch (msg.type) {
+    case 'stdout':
+      setLines((prev) => [...prev, { text: msg.data, kind: 'stdout' }])
+      break
+    case 'stderr':
+      setLines((prev) => [...prev, { text: msg.data, kind: 'stderr' }])
+      break
+    case 'cd':
+      setCurrentDir(msg.dir)
+      break
+    case 'error':
+      setError(msg.message)
+      break
+  }
+}
+
+export function TerminalTab({ serverId }: Props) {
+  const { data: containers, isLoading } = useContainersQuery(serverId)
+
+  const [selectedContainer, setSelectedContainer] = useState<string | null>(null)
+  const [lines, setLines] = useState<Line[]>([])
   const [terminalInput, setTerminalInput] = useState('')
-  const containerRef = useRef<HTMLDivElement>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [currentDir, setCurrentDir] = useState('/')
 
-  useEffect(() => {
-    const container = containerRef.current
-    const inputForm = document.getElementById('terminal-input-form')
-    if (container && inputForm) {
-      const formBottom = inputForm.offsetTop + inputForm.offsetHeight
-      if (formBottom > container.scrollTop + container.clientHeight) {
-        container.scrollTop = formBottom - container.clientHeight + 40
-      }
-    }
-  }, [terminalLines])
+  const containerRef = useAutoScroll(lines)
+  const terminalScrollable = useTerminalScroll(containerRef)
 
-  // Focus the input on mount without scrolling the page
-  useEffect(() => {
-    const input = document.getElementById('terminal-input')
-    if (input) {
-      input.focus({ preventScroll: true })
-    }
+  const token = useCallback(() => {
+    return localStorage.getItem('session_token') ?? ''
   }, [])
 
-  const handleTerminalSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!terminalInput.trim()) return
-    const cmd = terminalInput.trim()
-    const append = (lines: string[]) =>
-      setTerminalLines((prev) => [...prev, `root@DeployDodo-explorer:~# ${cmd}`, ...lines])
-    if (cmd === 'help') {
-      append(['Available commands: help, clear, docker ps, uname -a, ls'])
-    } else if (cmd === 'clear') {
-      setTerminalLines([])
-    } else if (cmd === 'docker ps') {
-      append([
-        'CONTAINER ID   IMAGE              STATUS         PORTS',
-        'a1b2c3d4e5f6   traefik:v3.0       Up 3 hours     0.0.0.0:80->80/tcp',
-        'f6e5d4c3b2a1   postgres:15        Up 3 hours     0.0.0.0:5432->5432/tcp',
-      ])
-    } else if (cmd === 'uname -a') {
-      append(['Linux DeployDodo-explorer 6.1.0-21-amd64 #1 SMP x86_64 GNU/Linux'])
-    } else if (cmd === 'ls') {
-      append(['deploydodo  docker  logs  ssl  tmp'])
-    } else {
-      append([`bash: ${cmd}: command not found`])
-    }
-    setTerminalInput('')
+  const { connected, connect, runCommand, disconnect, addListener, removeListener } =
+    useTerminalSocket()
+
+  const onOutput = useCallback(
+    (msg: TerminalMessage) => {
+      applyMessageToState(msg, setLines, setCurrentDir, setError)
+    },
+    [],
+  )
+
+  useEffect(() => {
+    addListener(onOutput)
+    return () => removeListener(onOutput)
+  }, [addListener, removeListener, onOutput])
+
+  useEffect(() => {
+    const input = document.getElementById('terminal-input')
+    if (input) input.focus({ preventScroll: true })
+  }, [])
+
+  useEffect(() => {
+    return () => disconnect()
+  }, [disconnect])
+
+  const handleConnect = useCallback(
+    (containerId: string) => {
+      setError(null)
+      setCurrentDir('/')
+      setSelectedContainer(containerId)
+      if (!connected) {
+        setLines([])
+        connect(serverId, token())
+      }
+    },
+    [connected, connect, serverId, token],
+  )
+
+  useAutoConnect(containers, handleConnect)
+
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault()
+      const cmd = terminalInput.trim()
+      if (!cmd || !selectedContainer) return
+
+      setLines((prev) => [...prev, { text: cmd, kind: 'input' }])
+
+      if (cmd === 'clear') {
+        setLines([])
+        setTerminalInput('')
+        return
+      }
+
+      setTerminalInput('')
+      const messages = await runCommand(selectedContainer, cmd)
+      for (const msg of messages) {
+        applyMessageToState(msg, setLines, setCurrentDir, setError)
+      }
+    },
+    [terminalInput, selectedContainer, runCommand],
+  )
+
+  if (isLoading) {
+    return (
+      <SectionCard>
+        <SectionHeader title="Terminal" subtitle="Loading containers..." />
+        <div className="flex items-center justify-center py-20">
+          <span className="font-manrope text-sm text-text-secondary">
+            Looking for running containers...
+          </span>
+        </div>
+      </SectionCard>
+    )
+  }
+
+  if (!containers || containers.length === 0) {
+    return (
+      <SectionCard>
+        <SectionHeader title="Terminal" subtitle="No containers available" />
+        <div className="flex items-center justify-center py-20">
+          <span className="font-manrope text-sm text-text-secondary">
+            No running containers found on this server.
+          </span>
+        </div>
+      </SectionCard>
+    )
+  }
+
+  if (!selectedContainer || !connected) {
+    return (
+      <SectionCard>
+        <SectionHeader
+          title="Terminal"
+          subtitle={connected ? 'Connecting...' : 'Establishing connection...'}
+        />
+        <div className="flex items-center justify-center py-20">
+          <span className="font-manrope text-sm text-text-secondary">
+            {connected
+              ? 'Selecting container...'
+              : 'Establishing connection...'}
+          </span>
+        </div>
+      </SectionCard>
+    )
   }
 
   return (
     <SectionCard>
       <SectionHeader
         title="Terminal"
-        subtitle="Configuration file ( /data/DeployDodo/proxy/docker-compose.yml )"
+        subtitle={`Connected — ${selectedContainer.slice(0, 12)}...`}
       />
+      {error && (
+        <div className="mb-4 px-3 py-2 rounded bg-[#3a2020] border border-[#d75f5f] font-manrope text-sm text-[#d75f5f]">
+          {error}
+          <button
+            onClick={() => {
+              setError(null)
+              setSelectedContainer(null)
+            }}
+            className="ml-3 underline hover:no-underline"
+          >
+            Pick another container
+          </button>
+        </div>
+      )}
       <div
         ref={containerRef}
-        className="border border-neutral-100 rounded-xl py-5 px-3 min-h-[550px] max-h-[700px] overflow-y-auto font-mono text-sm flex flex-col bg-white select-text cursor-text"
-        onClick={() => document.getElementById('terminal-input')?.focus({ preventScroll: true })}
+        className={`border border-neutral-100 rounded-xl py-5 px-3 min-h-[550px] font-mono text-sm flex flex-col bg-[#1c1c1c] text-[#c6c6c6] select-text cursor-text ${terminalScrollable ? 'max-h-[700px] overflow-y-auto' : 'overflow-y-hidden'}`}
+        onClick={() =>
+          document
+            .getElementById('terminal-input')
+            ?.focus({ preventScroll: true })
+        }
       >
-        {(() => {
-          const totalMinLines = 29
-          const displayRows: (
-            | { type: 'history'; content: string; key: string }
-            | { type: 'input'; key: string }
-            | { type: 'empty'; key: string }
-          )[] = []
-
-          terminalLines.forEach((line, i) => {
-            displayRows.push({ type: 'history', content: line, key: `hist-${i}` })
-          })
-
-          displayRows.push({ type: 'input', key: 'active-input' })
-
-          while (displayRows.length < totalMinLines) {
-            displayRows.push({ type: 'empty', key: `empty-${displayRows.length}` })
-          }
-
-          return displayRows.map((row, idx) => {
-            const lineNum = idx + 1
-            return (
-              <div key={row.key} className="flex items-start leading-6 py-0.5 min-h-[28px]">
-                <span className="w-10 text-right pr-4 text-text-secondary/40 select-none font-mono text-sm">
-                  {lineNum}
-                </span>
-                {row.type === 'history' && (
-                  <div className="flex-1 font-mono text-sm whitespace-pre-wrap select-text">
-                    {row.content.startsWith('root@DeployDodo-explorer:~# ') ? (
-                      <>
-                        <span className="text-text-secondary select-none">root@DeployDodo-explorer:~# </span>
-                        <span className="text-high-contrast font-semibold">
-                          {row.content.substring('root@DeployDodo-explorer:~# '.length)}
-                        </span>
-                      </>
-                    ) : (
-                      <span className="text-text-secondary/80">{row.content}</span>
-                    )}
-                  </div>
-                )}
-                {row.type === 'input' && (
-                  <form id="terminal-input-form" onSubmit={handleTerminalSubmit} className="flex-1 flex items-center gap-1.5 min-w-0">
-                    <span className="text-text-secondary select-none shrink-0 font-mono text-sm leading-6">
-                      root@DeployDodo-explorer:~#
-                    </span>
-                    <input
-                      id="terminal-input"
-                      type="text"
-                      value={terminalInput}
-                      onChange={(e) => setTerminalInput(e.target.value)}
-                      className="flex-1 bg-transparent border-none outline-none text-high-contrast font-semibold font-mono text-sm p-0 m-0 leading-6 focus:ring-0 focus:outline-none focus:border-none"
-                      autoComplete="off"
-                      spellCheck={false}
-                    />
-                  </form>
-                )}
-                {row.type === 'empty' && <div className="flex-1" />}
-              </div>
-            )
-          })
-        })()}
-        <div />
+        {lines.map((line, i) => (
+          <LineView key={i} index={i} line={line} currentDir={currentDir} />
+        ))}
+        <TerminalPrompt
+          currentDir={currentDir}
+          lineCount={lines.length}
+          connected={connected}
+          terminalInput={terminalInput}
+          onInputChange={setTerminalInput}
+          onSubmit={handleSubmit}
+        />
       </div>
     </SectionCard>
   )

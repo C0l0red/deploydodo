@@ -6,6 +6,8 @@ use axum::{
 use serde_json::json;
 use thiserror::Error;
 
+pub type AppResult<T> = Result<T, AppError>;
+
 #[derive(Debug, Error)]
 pub enum AppError {
     #[error("database error: {0}")]
@@ -40,6 +42,15 @@ pub enum AppError {
 
     #[error("job not found")]
     JobNotFound,
+
+    #[error("local docker error: {0}")]
+    LocalDockerConnect(String),
+
+    #[error("remote docker via SSH error: {0}")]
+    RemoteDockerConnect(String),
+
+    #[error("docker operation error: {0}")]
+    DockerOperation(String),
 }
 
 impl IntoResponse for AppError {
@@ -47,6 +58,13 @@ impl IntoResponse for AppError {
         let (status, message) = match &self {
             AppError::Database(e) => {
                 tracing::error!("database error: {e}");
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Internal server error".to_string(),
+                )
+            }
+            AppError::InternalServerError(_) => {
+                tracing::error!("internal error: {}", self.to_string());
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "Internal server error".to_string(),
@@ -73,7 +91,16 @@ impl IntoResponse for AppError {
                 (StatusCode::INTERNAL_SERVER_ERROR, self.to_string())
             }
             AppError::JobNotFound => (StatusCode::NOT_FOUND, self.to_string()),
-            AppError::InternalServerError(..) => {
+            AppError::LocalDockerConnect(e) => {
+                tracing::error!("local docker connect error: {e}");
+                (StatusCode::INTERNAL_SERVER_ERROR, self.to_string())
+            }
+            AppError::RemoteDockerConnect(e) => {
+                tracing::error!("remote docker connect error: {e}");
+                (StatusCode::INTERNAL_SERVER_ERROR, self.to_string())
+            }
+            AppError::DockerOperation(e) => {
+                tracing::error!("docker operation error: {e}");
                 (StatusCode::INTERNAL_SERVER_ERROR, self.to_string())
             }
         };

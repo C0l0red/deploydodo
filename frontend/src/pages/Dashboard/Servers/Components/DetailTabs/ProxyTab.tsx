@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { motion } from 'framer-motion'
 import { Sidebar, SectionCard, SectionHeader, SaveButton, OutlineButton, Toggle, FieldLabel } from '..'
 
 type ProxySidebar = 'Configuration' | 'Dynamic Configuration' | 'Logs'
@@ -18,15 +17,8 @@ export function ProxyTab() {
   const proxyOptions: ProxySidebar[] = ['Configuration', 'Dynamic Configuration', 'Logs']
 
   return (
-    <motion.div
-      key="Proxy"
-      initial={{ opacity: 0, y: 4 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -4 }}
-      transition={{ duration: 0.12, ease: 'easeOut' }}
-    >
-      <div className="flex gap-6 items-start">
-        <Sidebar options={proxyOptions} active={activeProxySidebar} onChange={setActiveProxySidebar} />
+    <div className="flex gap-6 items-start">
+      <Sidebar options={proxyOptions} active={activeProxySidebar} onChange={setActiveProxySidebar} />
 
         <div className="flex-1 min-w-0 flex flex-col gap-5">
 
@@ -205,6 +197,5 @@ http:
           )}
         </div>
       </div>
-    </motion.div>
   )
 }

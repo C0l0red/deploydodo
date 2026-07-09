@@ -1,3 +1,10 @@
-mod client;
+mod error;
+mod session;
+pub mod terminal;
+mod tunnel;
+mod types;
 
-pub use client::{CommandOutput, DockerStatus, SshAuth, SshError, SshSession};
+pub use error::SshError;
+pub use session::{SshSession, SshTimeout};
+pub use tunnel::{forward_docker_socket, DockerTunnel};
+pub use types::{CommandOutput, DockerStatus, SshAuth};

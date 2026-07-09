@@ -3,7 +3,7 @@ import * as Yup from 'yup'
 import { ArrowBackIcon, WarningCircleIcon } from '@/assets/icons'
 import { cn } from '@/utilities/cn'
 import { useCreateRemoteServer } from '@/api/mutations'
-import { Card } from '@/layouts/PageLayout'
+import { Card } from '@/pages/Dashboard/Servers/PageLayout'
 
 type AuthMethod = 'ssh-key' | 'password'
 

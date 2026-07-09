@@ -2,10 +2,13 @@ use std::sync::Arc;
 
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
-use sqlx::SqlitePool;
+use sqlx::{Row, SqlitePool};
 use utoipa::ToSchema;
 
-use crate::error::AppError;
+use crate::{
+    error::{AppError, AppResult},
+    services::{server_service::Server, types::ServerType},
+};
 
 #[derive(Debug, Serialize, Deserialize, ToSchema, sqlx::Type, Clone)]
 #[serde(rename_all = "lowercase")]
@@ -18,13 +21,14 @@ pub enum AuthType {
 pub struct SshKey {
     pub id: i64,
     pub name: String,
-    username: String,
-    auth_type: AuthType,
-    password: Option<String>,
-    private_key: Option<String>,
-    public_key: Option<String>,
+    pub username: String,
+    pub auth_type: AuthType,
+    pub password: Option<String>,
+    pub private_key: Option<String>,
+    pub public_key: Option<String>,
 }
 
+#[allow(dead_code)]
 impl SshKey {
     pub fn username(&self) -> &str {
         &self.username
@@ -37,6 +41,20 @@ impl SshKey {
                 .private_key
                 .as_deref()
                 .ok_or(AppError::MissingKeySecret),
+        }
+    }
+}
+
+impl<'a> TryFrom<&'a SshKey> for dodosh::SshAuth<'a> {
+    type Error = AppError;
+
+    fn try_from(value: &'a SshKey) -> AppResult<Self> {
+        match value.auth_type {
+            AuthType::KeyPair => Ok(Self::Key {
+                private_key: value.get_secret()?,
+                passphrase: None,
+            }),
+            AuthType::Password => Ok(Self::Password(value.get_secret()?)),
         }
     }
 }
@@ -108,5 +126,42 @@ impl SshService {
             private_key: Some(private_key.to_string()),
             public_key: public_key.map(|key| key.to_string()),
         })
+    }
+
+    pub async fn get_key_by_id(&self, key_id: i64) -> AppResult<SshKey> {
+        let row = sqlx::query(
+            "SELECT id, name, username, auth_type, password, private_key, public_key FROM ssh_keys WHERE id = $1",
+        )
+        .bind(key_id)
+        .fetch_optional(&*self.db)
+        .await
+        .map_err(AppError::Database)?;
+
+        let row = row.ok_or(AppError::Validation("SSH key not found".into()))?;
+
+        Ok(SshKey {
+            id: row.try_get("id").map_err(AppError::Database)?,
+            name: row.try_get("name").map_err(AppError::Database)?,
+            username: row.try_get("username").map_err(AppError::Database)?,
+            auth_type: row.try_get("auth_type").map_err(AppError::Database)?,
+            password: row.try_get("password").ok(),
+            private_key: row.try_get("private_key").ok(),
+            public_key: row.try_get("public_key").ok(),
+        })
+    }
+
+    pub async fn get_key_for_server(&self, server: &Server) -> AppResult<SshKey> {
+        match server.server_type {
+            ServerType::Local => Err(AppError::Validation(
+                "No SSH key available for local server".to_string(),
+            )),
+            ServerType::Remote => {
+                let key_id = server.ssh_key_id.ok_or(AppError::InternalServerError(
+                    "SSH key missing for remote server".into(),
+                ))?;
+
+                self.get_key_by_id(key_id).await
+            }
+        }
     }
 }

@@ -5,9 +5,9 @@ use serde::{Deserialize, Serialize};
 use sqlx::{Row, SqlitePool};
 use utoipa::ToSchema;
 
-use crate::error::AppError;
+use crate::error::{AppError, AppResult};
 
-#[derive(Debug, Serialize, Deserialize, ToSchema, sqlx::Type, Clone)]
+#[derive(Debug, Serialize, Deserialize, ToSchema, sqlx::Type, Clone, PartialEq)]
 #[serde(rename_all = "lowercase")]
 #[sqlx(type_name = "TEXT", rename_all = "lowercase")]
 pub enum ServerType {
@@ -23,6 +23,14 @@ pub struct Server {
     pub hostname: String,
     pub ssh_port: Option<u16>,
     pub ssh_key_id: Option<i64>,
+}
+
+impl Server {
+    pub fn ssh_port(&self) -> AppResult<u16> {
+        self.ssh_port.ok_or(AppError::InternalServerError(
+            "ssh_port of Server is None".to_string(),
+        ))
+    }
 }
 
 pub struct ServerService {
@@ -64,6 +72,26 @@ impl ServerService {
             hostname: hostname.to_string(),
             ssh_port: None,
             ssh_key_id: None,
+        })
+    }
+
+    pub async fn get_server_by_id(&self, server_id: i64) -> Result<Server, AppError> {
+        let row = sqlx::query(
+            "SELECT id, name, server_type, hostname, ssh_port, ssh_key_id FROM servers WHERE id = $1",
+        )
+        .bind(server_id)
+        .fetch_optional(&*self.db)
+        .await
+        .map_err(AppError::Database)?
+        .ok_or(AppError::Validation("Server not found".into()))?;
+
+        Ok(Server {
+            id: row.try_get("id").map_err(AppError::Database)?,
+            name: row.try_get("name").map_err(AppError::Database)?,
+            server_type: row.try_get("server_type").map_err(AppError::Database)?,
+            hostname: row.try_get("hostname").map_err(AppError::Database)?,
+            ssh_port: row.try_get("ssh_port").map_err(AppError::Database)?,
+            ssh_key_id: row.try_get("ssh_key_id").map_err(AppError::Database)?,
         })
     }
 

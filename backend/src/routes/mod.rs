@@ -6,4 +6,5 @@ pub mod job_events;
 pub mod list_servers;
 pub mod login;
 pub mod status;
+pub mod terminal;
 pub mod validate_session;

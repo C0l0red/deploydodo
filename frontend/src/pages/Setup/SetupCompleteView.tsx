@@ -1,6 +1,6 @@
 import { CheckCircleOutlineIcon } from '@/assets/icons'
 import { useToast } from '@/components/Toast'
-import { Card } from '@/layouts/PageLayout'
+import { Card } from '@/pages/Dashboard/Servers/PageLayout'
 
 export function SetupCompleteView({ onGoToDashboard }: { onGoToDashboard: () => void }) {
   const { toast } = useToast()

@@ -38,3 +38,37 @@ export async function validateSession(): Promise<boolean> {
 
   return !error
 }
+
+// ── Containers ────────────────────────────────────────────────────────────────
+
+export type ContainerInfo = {
+  id: string
+  name: string
+  image: string
+}
+
+export function useContainersQuery(serverId: number | null) {
+  return useQuery({
+    queryKey: ['containers', serverId],
+    queryFn: () => fetchContainers(serverId!),
+    enabled: serverId != null,
+    staleTime: 15_000,
+  })
+}
+
+async function fetchContainers(serverId: number): Promise<ContainerInfo[]> {
+  const token = localStorage.getItem('session_token')
+  if (!token) return []
+
+  const res = await fetch(`/api/servers/${serverId}/containers`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error((body as { error?: string }).error ?? 'Failed to fetch containers')
+  }
+
+  const data = await res.json()
+  return (data as { containers: ContainerInfo[] }).containers ?? []
+}

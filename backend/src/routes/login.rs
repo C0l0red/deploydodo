@@ -38,13 +38,7 @@ pub async fn login(
 
     user.verify_password(&request.password)?;
 
-    if let Some(user_id) = user.id {
-        let session_token = deps.session_service.create_session(user_id).await?;
+    let session_token = deps.session_service.create_session(user.get_id()?).await?;
 
-        Ok((StatusCode::OK, Json(LoginResponse { session_token })))
-    } else {
-        Err(AppError::InternalServerError(
-            "id is None in User type".to_string(),
-        ))
-    }
+    Ok((StatusCode::OK, Json(LoginResponse { session_token })))
 }

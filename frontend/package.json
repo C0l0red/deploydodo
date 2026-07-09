@@ -14,6 +14,8 @@
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/react-query": "^5.90.21",
     "@tanstack/react-router": "^1.166.3",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0",
     "classnames": "^2.5.1",
     "formik": "^2.4.9",
     "framer-motion": "^12.40.0",

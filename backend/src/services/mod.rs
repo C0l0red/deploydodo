@@ -1,5 +1,5 @@
 mod job_service;
-mod server_service;
+pub mod server_service;
 mod session_service;
 pub mod ssh_service;
 pub mod user_service;

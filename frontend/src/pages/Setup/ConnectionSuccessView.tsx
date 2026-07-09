@@ -1,6 +1,6 @@
 import { CheckCircleOutlineIcon } from '@/assets/icons'
 import type { JobCompletePayload } from '@/api/types'
-import { Card } from '@/layouts/PageLayout'
+import { Card } from '@/pages/Dashboard/Servers/PageLayout'
 
 function InfoTile({ label, value }: { label: string; value: string }) {
   return (

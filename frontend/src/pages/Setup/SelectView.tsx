@@ -1,4 +1,4 @@
-import { Card } from '@/layouts/PageLayout'
+import { Card } from '@/pages/Dashboard/Servers/PageLayout'
 
 export type ServerOptionId = 'this-machine' | 'remote-server'
 

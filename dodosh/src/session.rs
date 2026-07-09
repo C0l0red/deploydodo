@@ -4,30 +4,9 @@ use std::time::Duration;
 use russh::client;
 use russh::keys::ssh_key::PublicKey;
 use russh::keys::{decode_secret_key, PrivateKeyWithHashAlg};
-use thiserror::Error;
 
-#[derive(Debug, Error)]
-pub enum SshError {
-    #[error("ssh error: {0}")]
-    Ssh(#[from] russh::Error),
-    #[error("key error: {0}")]
-    Key(#[from] russh::keys::Error),
-    #[error("authentication failed")]
-    AuthFailed,
-}
-
-pub enum SshAuth<'a> {
-    Password(&'a str),
-    Key {
-        private_key: &'a str,
-        passphrase: Option<&'a str>,
-    },
-}
-
-pub struct DockerStatus {
-    pub is_installed: bool,
-    pub is_running: bool,
-}
+use super::error::SshError;
+use super::types::{CommandOutput, DockerStatus, SshAuth};
 
 pub struct Handler;
 
@@ -43,26 +22,78 @@ impl client::Handler for Handler {
 }
 
 pub struct SshSession {
-    pub handle: client::Handle<Handler>,
+    handle: Arc<client::Handle<Handler>>,
+}
+
+pub struct SshTimeout {
+    inactivity_secs: Option<u64>,
+    keepalive_secs: Option<u64>,
+    keepalive_max: usize,
+}
+
+#[derive(Default)]
+struct SshTimeoutBuilder {
+    inactivity_secs: Option<u64>,
+    keepalive_secs: Option<u64>,
+    keepalive_max: Option<usize>,
+}
+
+impl SshTimeout {
+    #[allow(private_interfaces)]
+    pub fn builder() -> SshTimeoutBuilder {
+        SshTimeoutBuilder::default()
+    }
+
+    pub fn none() -> Self {
+        Self::builder().build()
+    }
+
+    pub fn keepalive_secs(secs: u64) -> Self {
+        Self::builder().keepalive_secs(secs).build()
+    }
+
+    pub fn inactivity_secs(secs: u64) -> Self {
+        Self::builder().inactivity_secs(secs).build()
+    }
+}
+
+impl SshTimeoutBuilder {
+    pub fn inactivity_secs(&mut self, secs: u64) -> &Self {
+        self.inactivity_secs = Some(secs);
+        self
+    }
+
+    pub fn keepalive_secs(&mut self, secs: u64) -> &Self {
+        self.keepalive_secs = Some(secs);
+        self
+    }
+
+    pub fn build(&self) -> SshTimeout {
+        SshTimeout {
+            inactivity_secs: self.inactivity_secs,
+            keepalive_secs: self.keepalive_secs,
+            keepalive_max: self.keepalive_max.unwrap_or(5),
+        }
+    }
 }
 
 impl SshSession {
-    fn new(handle: client::Handle<Handler>) -> Self {
-        Self { handle }
+    pub(crate) fn new(handle: client::Handle<Handler>) -> Self {
+        Self {
+            handle: Arc::new(handle),
+        }
     }
 
-    /// Connects and authenticates, returning a live session.
     pub async fn connect(
         hostname: &str,
         port: u16,
         username: &str,
         auth: SshAuth<'_>,
-        timeout: Option<Duration>,
+        timeout_config: SshTimeout,
     ) -> Result<Self, SshError> {
-        session_init(hostname, port, username, auth, timeout).await
+        session_init(hostname, port, username, auth, timeout_config).await
     }
 
-    /// Cleanly closes the connection.
     pub async fn disconnect(&self) -> Result<(), SshError> {
         self.handle
             .disconnect(
@@ -75,36 +106,28 @@ impl SshSession {
     }
 
     pub async fn check_root_access(&self) -> Result<bool, SshError> {
-        // First check: is the user already root?
         let id_output = self.run_command("id -u").await?;
 
         if id_output.exit_code == 0 && id_output.stdout.trim() == "0" {
             return Ok(true);
         }
 
-        // Second check: passwordless sudo.
         let sudo_output = self.run_command("sudo -n true").await?;
 
         Ok(sudo_output.exit_code == 0)
     }
 
-    /// Returns `Ok(true)` if the Docker installation came from snap.
     pub async fn is_docker_installed_via_snap(&self) -> Result<bool, SshError> {
-        // Primary: snap path in the binary location.
         let which = self.run_command("which docker").await?;
         if which.exit_code == 0 && which.stdout.contains("/snap/") {
             return Ok(true);
         }
 
-        // Secondary: ask snap itself (handles symlinks that don't expose the snap path).
         let snap = self.run_command("snap list docker").await?;
         Ok(snap.exit_code == 0)
     }
 
-    /// Returns `Ok(true)` if Docker is installed and the daemon is reachable.
-    /// Returns `Ok(false)` if the binary is missing or the daemon is not running.
     pub async fn check_docker(&self) -> Result<DockerStatus, SshError> {
-        // Guard: is the binary present?
         let which = self.run_command("command -v docker").await?;
         if which.exit_code != 0 {
             return Ok(DockerStatus {
@@ -113,7 +136,6 @@ impl SshSession {
             });
         }
 
-        // Full check: is the daemon up and responding?
         let info = self.run_command("docker info").await?;
         Ok(DockerStatus {
             is_installed: true,
@@ -121,8 +143,12 @@ impl SshSession {
         })
     }
 
+    pub async fn open_channel(&self) -> Result<russh::Channel<russh::client::Msg>, SshError> {
+        Ok(self.handle.channel_open_session().await?)
+    }
+
     pub async fn run_command(&self, command: &str) -> Result<CommandOutput, SshError> {
-        let mut channel = self.handle.channel_open_session().await?;
+        let mut channel = self.open_channel().await?;
         channel.exec(true, command).await?;
 
         let mut stdout = String::new();
@@ -144,11 +170,10 @@ impl SshSession {
         }
         Ok(CommandOutput { stdout, exit_code })
     }
-}
 
-pub struct CommandOutput {
-    pub stdout: String,
-    pub exit_code: u32,
+    pub async fn forward_docker_socket(&self) -> Result<crate::DockerTunnel, SshError> {
+        crate::forward_docker_socket(self.handle.clone()).await
+    }
 }
 
 async fn session_init(
@@ -156,10 +181,12 @@ async fn session_init(
     port: u16,
     username: &str,
     auth: SshAuth<'_>,
-    timeout: Option<Duration>,
+    timeout_config: SshTimeout,
 ) -> Result<SshSession, SshError> {
     let config = Arc::new(client::Config {
-        inactivity_timeout: timeout.or(Some(Duration::from_secs(10))),
+        inactivity_timeout: timeout_config.inactivity_secs.map(Duration::from_secs),
+        keepalive_interval: timeout_config.keepalive_secs.map(Duration::from_secs),
+        keepalive_max: timeout_config.keepalive_max,
         ..<_>::default()
     });
 

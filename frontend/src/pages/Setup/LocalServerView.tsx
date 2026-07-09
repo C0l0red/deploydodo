@@ -4,7 +4,7 @@ import { cn } from '@/utilities/cn'
 import { useToast } from '@/components/Toast'
 import { useCreateLocalServer } from '@/api/mutations'
 import type { CreateLocalServerResponse } from '@/api/types'
-import { Card } from '@/layouts/PageLayout'
+import { Card } from '@/pages/Dashboard/Servers/PageLayout'
 
 function FormField({
   label,

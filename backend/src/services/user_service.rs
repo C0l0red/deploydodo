@@ -39,6 +39,12 @@ impl User {
             .verify_password(password.as_bytes(), &parsed_hash)
             .map_err(|_| AppError::InvalidCredentials)
     }
+
+    pub fn get_id(&self) -> Result<i64, AppError> {
+        self.id.ok_or(AppError::InternalServerError(
+            "id is None in User type".to_string(),
+        ))
+    }
 }
 
 impl UserService {
