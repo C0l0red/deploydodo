@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::{Row, SqlitePool};
 use utoipa::ToSchema;
 
-use crate::error::AppError;
+use crate::error::{AppError, AppResult};
 
 #[derive(Debug, Serialize, Deserialize, ToSchema, sqlx::Type, Clone, PartialEq)]
 #[serde(rename_all = "lowercase")]
@@ -23,6 +23,14 @@ pub struct Server {
     pub hostname: String,
     pub ssh_port: Option<u16>,
     pub ssh_key_id: Option<i64>,
+}
+
+impl Server {
+    pub fn ssh_port(&self) -> AppResult<u16> {
+        self.ssh_port.ok_or(AppError::InternalServerError(
+            "ssh_port of Server is None".to_string(),
+        ))
+    }
 }
 
 pub struct ServerService {

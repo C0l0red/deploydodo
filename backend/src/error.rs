@@ -6,6 +6,8 @@ use axum::{
 use serde_json::json;
 use thiserror::Error;
 
+pub type AppResult<T> = Result<T, AppError>;
+
 #[derive(Debug, Error)]
 pub enum AppError {
     #[error("database error: {0}")]
@@ -63,7 +65,10 @@ impl IntoResponse for AppError {
             }
             AppError::InternalServerError(_) => {
                 tracing::error!("internal error: {}", self.to_string());
-                (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string())
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Internal server error".to_string(),
+                )
             }
             AppError::AdminAlreadyConfigured => (StatusCode::CONFLICT, self.to_string()),
             AppError::PasswordHash => {

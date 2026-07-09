@@ -1,8 +1,7 @@
 mod job_service;
-mod server_service;
+pub mod server_service;
 mod session_service;
 pub mod ssh_service;
-pub mod terminal_service;
 pub mod user_service;
 mod variables_service;
 
@@ -17,7 +16,6 @@ pub mod types {
     pub use super::job_service::JobType;
     pub use super::server_service::ServerType;
     pub use super::ssh_service::AuthType;
-    pub use super::terminal_service::ContainerInfo;
     pub use super::user_service::AccountType;
     pub use super::user_service::User;
 }
