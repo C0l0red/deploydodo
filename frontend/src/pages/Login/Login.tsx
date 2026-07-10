@@ -6,13 +6,11 @@ import { TextInput } from '@/components/TextInput'
 import { Button } from '@/components/Button'
 import { LogoIcon, EyeOpenIcon, EyeClosedIcon } from '@/assets/icons'
 import { useToast } from '@/components/Toast'
-import { loginRoute } from './route'
 import { api } from '@/api/client'
 
 export function Login() {
   const navigate = useNavigate()
   const { toast } = useToast()
-  const status = loginRoute.useLoaderData()
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)

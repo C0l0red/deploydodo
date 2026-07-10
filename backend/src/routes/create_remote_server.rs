@@ -271,7 +271,7 @@ async fn handle_remote(
 
     let server = deps
         .server_service
-        .create_remote_server(name, hostname, *port, ssh_key.id)
+        .create_remote_server(name, hostname, *port, *ssh_key.id())
         .await?;
 
     deps.job_service

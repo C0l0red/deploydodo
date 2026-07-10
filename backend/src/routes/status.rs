@@ -2,10 +2,7 @@ use axum::{extract::State, Json};
 use serde::Serialize;
 use utoipa::ToSchema;
 
-use crate::{
-    dependencies::Dependencies,
-    error::AppResult,
-};
+use crate::{dependencies::Dependencies, error::AppResult};
 
 #[derive(Serialize, ToSchema)]
 pub struct StatusResponse {

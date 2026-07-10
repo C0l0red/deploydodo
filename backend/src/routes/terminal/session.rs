@@ -25,7 +25,7 @@ pub async fn terminal_init(
         server.hostname(),
         *server.ssh_port(),
         ssh_key.username(),
-        (&ssh_key).try_into()?,
+        (&ssh_key).into(),
         params.into(),
         SshTimeout::keepalive_secs(30),
     )

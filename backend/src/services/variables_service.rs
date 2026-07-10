@@ -1,16 +1,16 @@
 use std::sync::Arc;
 
 use chrono::Utc;
-use sqlx::SqlitePool;
+use sqlx::PgPool;
 
 use crate::error::AppResult;
 
 pub struct VariablesService {
-    db: Arc<SqlitePool>,
+    db: Arc<PgPool>,
 }
 
 impl VariablesService {
-    pub fn new(db: Arc<SqlitePool>) -> Self {
+    pub fn new(db: Arc<PgPool>) -> Self {
         Self { db }
     }
 

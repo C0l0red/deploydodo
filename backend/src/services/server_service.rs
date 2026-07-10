@@ -2,7 +2,7 @@ use std::{sync::Arc, u16};
 
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
-use sqlx::{Row, SqlitePool};
+use sqlx::{PgPool, Row};
 use tokio::sync::OnceCell;
 use utoipa::ToSchema;
 
@@ -76,11 +76,11 @@ impl<'a> Server {
 }
 
 pub struct ServerService {
-    db: Arc<SqlitePool>,
+    db: Arc<PgPool>,
 }
 
 impl ServerService {
-    pub fn new(db: Arc<SqlitePool>) -> Self {
+    pub fn new(db: Arc<PgPool>) -> Self {
         let port = std::env::var("LOCAL_SSH_PORT")
             .map(|h| {
                 h.parse::<u16>()
@@ -139,11 +139,12 @@ impl ServerService {
                 name: row.try_get("name")?,
             }
         } else {
+            let port: i32 = row.try_get("ssh_port")?;
             Server::Remote {
                 id: row.try_get("id")?,
                 name: row.try_get("name")?,
                 hostname: row.try_get("hostname")?,
-                ssh_port: row.try_get("ssh_port")?,
+                ssh_port: port as u16,
                 ssh_key_id: row.try_get("ssh_key_id")?,
             }
         })
@@ -166,11 +167,12 @@ impl ServerService {
                     name: row.try_get("name")?,
                 }
             } else {
+                let port: i32 = row.try_get("ssh_port")?;
                 Server::Remote {
                     id: row.try_get("id")?,
                     name: row.try_get("name")?,
                     hostname: row.try_get("hostname")?,
-                    ssh_port: row.try_get("ssh_port")?,
+                    ssh_port: port as u16,
                     ssh_key_id: row.try_get("ssh_key_id")?,
                 }
             };
@@ -194,7 +196,7 @@ impl ServerService {
         .bind(name)
         .bind("remote")
         .bind(hostname)
-        .bind(ssh_port)
+        .bind(ssh_port as i32)
         .bind(ssh_key_id)
         .bind(Utc::now())
         .fetch_one(&*self.db)

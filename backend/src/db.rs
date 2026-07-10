@@ -1,13 +1,11 @@
 use sqlx::{
-    sqlite::{SqliteConnectOptions, SqlitePool},
+    postgres::{PgConnectOptions, PgPool},
     ConnectOptions,
 };
 use std::str::FromStr;
 
-pub async fn create_pool(database_url: &str) -> Result<SqlitePool, sqlx::Error> {
-    let options = SqliteConnectOptions::from_str(database_url)?
-        .create_if_missing(true)
-        .disable_statement_logging();
+pub async fn create_pool(database_url: &str) -> Result<PgPool, sqlx::Error> {
+    let options = PgConnectOptions::from_str(database_url)?.disable_statement_logging();
 
-    SqlitePool::connect_with(options).await
+    PgPool::connect_with(options).await
 }

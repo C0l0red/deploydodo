@@ -45,7 +45,7 @@ function FieldInput({
   name: string
   value: string
   onChange: React.ChangeEventHandler<HTMLInputElement>
-  onBlur: React.FocusEventHandler<HTMLInputElement>
+  onBlur?: React.FocusEventHandler<HTMLInputElement>
   placeholder: string
   hasError?: boolean
 }) {

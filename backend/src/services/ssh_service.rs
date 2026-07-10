@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
-use sqlx::{Row, SqlitePool};
+use sqlx::{PgPool, Row};
 use utoipa::ToSchema;
 
 use crate::{
@@ -18,55 +18,63 @@ pub enum AuthType {
     KeyPair,
 }
 
-pub struct SshKey {
-    pub id: i64,
-    pub name: String,
-    pub username: String,
-    pub auth_type: AuthType,
-    pub password: Option<String>,
-    pub private_key: Option<String>,
-    pub public_key: Option<String>,
+impl AuthType {
+    pub fn is_keypair(&self) -> bool {
+        matches!(self, Self::Password)
+    }
+}
+
+pub enum SshKey {
+    Password {
+        id: i64,
+        name: String,
+        username: String,
+        password: String,
+    },
+    KeyPair {
+        id: i64,
+        name: String,
+        username: String,
+        private_key: String,
+        public_key: Option<String>,
+    },
 }
 
 #[allow(dead_code)]
-impl SshKey {
-    pub fn username(&self) -> &str {
-        &self.username
+impl<'a> SshKey {
+    pub fn id(&'a self) -> &'a i64 {
+        match self {
+            SshKey::Password { id, .. } | SshKey::KeyPair { id, .. } => id,
+        }
     }
 
-    pub fn get_secret(&self) -> AppResult<&str> {
-        match self.auth_type {
-            AuthType::Password => self.password.as_deref().ok_or(AppError::MissingKeySecret),
-            AuthType::KeyPair => self
-                .private_key
-                .as_deref()
-                .ok_or(AppError::MissingKeySecret),
+    pub fn username(&'a self) -> &'a str {
+        match self {
+            SshKey::Password { username, .. } | SshKey::KeyPair { username, .. } => username,
         }
     }
 }
 
-impl<'a> TryFrom<&'a SshKey> for dodosh::SshAuth<'a> {
-    type Error = AppError;
-
-    fn try_from(value: &'a SshKey) -> AppResult<Self> {
-        match value.auth_type {
-            AuthType::KeyPair => Ok(Self::Key {
-                private_key: value.get_secret()?,
+impl<'a> From<&'a SshKey> for dodosh::SshAuth<'a> {
+    fn from(value: &'a SshKey) -> Self {
+        match value {
+            SshKey::KeyPair { private_key, .. } => Self::Key {
+                private_key,
                 passphrase: None,
-            }),
-            AuthType::Password => Ok(Self::Password(value.get_secret()?)),
+            },
+            SshKey::Password { password, .. } => Self::Password(password),
         }
     }
 }
 
 pub struct SshService {
-    db: Arc<SqlitePool>,
+    db: Arc<PgPool>,
     host_ssh_username: String,
     host_ssh_private_key: String,
 }
 
 impl SshService {
-    pub fn new(db: Arc<SqlitePool>) -> Self {
+    pub fn new(db: Arc<PgPool>) -> Self {
         let host_ssh_username = std::env::var("LOCAL_SSH_USERNAME")
             .expect("The variable HOST_SSH_USERNAME must be present at runtime");
 
@@ -103,14 +111,11 @@ impl SshService {
         .await
         ?;
 
-        Ok(SshKey {
+        Ok(SshKey::Password {
             id,
             name: name.to_string(),
             username: username.to_string(),
-            password: Some(password.to_string()),
-            auth_type: AuthType::Password,
-            private_key: None,
-            public_key: None,
+            password: password.to_string(),
         })
     }
 
@@ -134,13 +139,11 @@ impl SshService {
         .await
         ?;
 
-        Ok(SshKey {
+        Ok(SshKey::KeyPair {
             id,
             name: name.to_string(),
             username: username.to_string(),
-            password: None,
-            auth_type: AuthType::KeyPair,
-            private_key: Some(private_key.to_string()),
+            private_key: private_key.to_string(),
             public_key: public_key.map(|key| key.to_string()),
         })
     }
@@ -156,26 +159,33 @@ impl SshService {
 
         let row = row.ok_or(AppError::Validation("SSH key not found".into()))?;
 
-        Ok(SshKey {
-            id: row.try_get("id")?,
-            name: row.try_get("name")?,
-            username: row.try_get("username")?,
-            auth_type: row.try_get("auth_type")?,
-            password: row.try_get("password").ok(),
-            private_key: row.try_get("private_key").ok(),
-            public_key: row.try_get("public_key").ok(),
+        let auth_type: AuthType = row.try_get("auth_type")?;
+
+        Ok(if auth_type.is_keypair() {
+            SshKey::KeyPair {
+                id: row.try_get("id")?,
+                name: row.try_get("name")?,
+                username: row.try_get("username")?,
+                private_key: row.try_get("private_key")?,
+                public_key: row.try_get("public_key").ok(),
+            }
+        } else {
+            SshKey::Password {
+                id: row.try_get("id")?,
+                name: row.try_get("name")?,
+                username: row.try_get("username")?,
+                password: row.try_get("password")?,
+            }
         })
     }
 
     pub async fn get_key_for_server(&self, server: &Server) -> AppResult<SshKey> {
         match server {
-            Server::Local { .. } => Ok(SshKey {
+            Server::Local { .. } => Ok(SshKey::KeyPair {
                 id: 0,
                 name: "local-server".to_string(),
                 username: self.host_ssh_username.clone(),
-                auth_type: AuthType::KeyPair,
-                password: None,
-                private_key: Some(self.host_ssh_private_key.clone()),
+                private_key: self.host_ssh_private_key.clone(),
                 public_key: None,
             }),
             Server::Remote { ssh_key_id, .. } => self.get_key_by_id(ssh_key_id).await,

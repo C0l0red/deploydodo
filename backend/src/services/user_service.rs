@@ -4,13 +4,13 @@ use argon2::{password_hash::SaltString, Argon2, PasswordHasher, PasswordVerifier
 use chrono::DateTime;
 use rand_core::OsRng;
 use serde::Serialize;
-use sqlx::{FromRow, SqlitePool, Type};
+use sqlx::{FromRow, PgPool, Type};
 use utoipa::ToSchema;
 
 use crate::error::{AppError, AppResult};
 
 pub struct UserService {
-    db: Arc<SqlitePool>,
+    db: Arc<PgPool>,
 }
 
 #[derive(Type, Serialize, ToSchema)]
@@ -48,7 +48,7 @@ impl User {
 }
 
 impl UserService {
-    pub fn new(db: Arc<SqlitePool>) -> Self {
+    pub fn new(db: Arc<PgPool>) -> Self {
         Self { db }
     }
 

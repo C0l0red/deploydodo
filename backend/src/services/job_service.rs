@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sqlx::SqlitePool;
+use sqlx::PgPool;
 use tokio::sync::broadcast;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -34,12 +34,12 @@ pub enum JobType {
 type SenderMap = Mutex<HashMap<String, broadcast::Sender<BroadcastEvent>>>;
 
 pub struct JobService {
-    db: Arc<SqlitePool>,
+    db: Arc<PgPool>,
     senders: SenderMap,
 }
 
 impl JobService {
-    pub fn new(db: Arc<SqlitePool>) -> Self {
+    pub fn new(db: Arc<PgPool>) -> Self {
         Self {
             db,
             senders: Mutex::new(HashMap::new()),

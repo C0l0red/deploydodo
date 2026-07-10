@@ -2,16 +2,16 @@ use std::sync::Arc;
 
 use chrono::Utc;
 use rand_core::{OsRng, RngCore};
-use sqlx::SqlitePool;
+use sqlx::PgPool;
 
 use crate::error::AppResult;
 
 pub struct SessionService {
-    db: Arc<SqlitePool>,
+    db: Arc<PgPool>,
 }
 
 impl SessionService {
-    pub fn new(db: Arc<SqlitePool>) -> Self {
+    pub fn new(db: Arc<PgPool>) -> Self {
         Self { db }
     }
 

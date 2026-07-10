@@ -7,7 +7,7 @@ CREATE TABLE jobs (
 );
 
 CREATE TABLE job_events (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY NOT NULL,
     job_id TEXT NOT NULL,
     event_type TEXT NOT NULL,
     data TEXT NOT NULL,
