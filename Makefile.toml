@@ -9,10 +9,9 @@ args = ["run", "-p", "backend"]
 [tasks.frontend]
 description = "Run the frontend development server"
 command = "npm"
-args = ["run", "dev"]
-cwd = "frontend"
+args = ["run", "dev", "--prefix", "frontend"]
 
-[tasks.add-migration]
+[tasks.migration]
 description = "Add a new database migration"
 command = "sqlx"
 args = ["migrate", "add", "-s", "-r", "${@}"]
@@ -30,23 +29,17 @@ command = "sqlx"
 args = ["migrate", "run"]
 cwd = "backend"
 
+[tasks.download-schema]
+description = "Saves the OpenApi schema from the backend"
+command = "cargo"
+args = ["run", "-p", "backend", "--bin", "openapi_gen"]
+
 [tasks.generate-schema]
-description = "Start the backend, wait for it to be ready, generate the frontend API schema, then stop the backend"
-script = '''
-cargo run -p backend &
-BACKEND_PID=$!
+description = "Generate the frontend API schema"
+dependencies = ["download-schema"]
+command = "npm"
+args = ["run", "generate:api", "--prefix", "frontend"]
 
-echo "Waiting for backend..."
-until curl -sf http://localhost:3000/api/health > /dev/null; do
-  sleep 0.5
-done
-
-npm run generate:api --prefix frontend
-EXIT_CODE=$?
-
-kill $BACKEND_PID
-exit $EXIT_CODE
-'''
 
 [tasks.dev]
 description = "Run backend and frontend concurrently"

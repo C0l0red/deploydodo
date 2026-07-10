@@ -53,3 +53,7 @@ use crate::services::types;
     )
 )]
 pub struct ApiDoc;
+
+pub fn openapi_json() -> String {
+    ApiDoc::openapi().to_json().unwrap()
+}

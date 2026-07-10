@@ -7,7 +7,7 @@ use utoipa::ToSchema;
 
 use crate::{
     error::{AppError, AppResult},
-    services::{server_service::Server, types::ServerType},
+    services::server_service::Server,
 };
 
 #[derive(Debug, Serialize, Deserialize, ToSchema, sqlx::Type, Clone)]
@@ -67,16 +67,16 @@ pub struct SshService {
 
 impl SshService {
     pub fn new(db: Arc<SqlitePool>) -> Self {
-        let host_ssh_username = std::env::var("HOST_SSH_USERNAME")
+        let host_ssh_username = std::env::var("LOCAL_SSH_USERNAME")
             .expect("The variable HOST_SSH_USERNAME must be present at runtime");
 
-        let host_ssh_private_key = std::env::var("HOST_SSH_PRIVATE_KEY")
+        let host_ssh_private_key = std::env::var("LOCAL_SSH_PRIVATE_KEY")
             .ok()
             .map(|path| {
                 std::fs::read_to_string(path)
-                    .expect("The path stored in HOST_SSH_PRIVATE_KEY does not exist")
+                    .expect("The path stored in LOCAL_SSH_PRIVATE_KEY does not exist")
             })
-            .expect("The variable HOST_SSH_PRIVATE_KEY must be present at runtime");
+            .expect("The variable LOCAL_SSH_PRIVATE_KEY must be present at runtime");
 
         Self {
             db,
@@ -145,7 +145,7 @@ impl SshService {
         })
     }
 
-    pub async fn get_key_by_id(&self, key_id: i64) -> AppResult<SshKey> {
+    pub async fn get_key_by_id(&self, key_id: &i64) -> AppResult<SshKey> {
         let row = sqlx::query(
             "SELECT id, name, username, auth_type, password, private_key, public_key FROM ssh_keys WHERE id = $1",
         )
@@ -168,8 +168,8 @@ impl SshService {
     }
 
     pub async fn get_key_for_server(&self, server: &Server) -> AppResult<SshKey> {
-        match server.server_type {
-            ServerType::Local => Ok(SshKey {
+        match server {
+            Server::Local { .. } => Ok(SshKey {
                 id: 0,
                 name: "local-server".to_string(),
                 username: self.host_ssh_username.clone(),
@@ -178,13 +178,7 @@ impl SshService {
                 private_key: Some(self.host_ssh_private_key.clone()),
                 public_key: None,
             }),
-            ServerType::Remote => {
-                let key_id = server.ssh_key_id.ok_or(AppError::InternalServerError(
-                    "SSH key missing for remote server".into(),
-                ))?;
-
-                self.get_key_by_id(key_id).await
-            }
+            Server::Remote { ssh_key_id, .. } => self.get_key_by_id(ssh_key_id).await,
         }
     }
 }

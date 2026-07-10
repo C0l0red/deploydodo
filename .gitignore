@@ -17,3 +17,4 @@ frontend/dist
 
 key_rsa
 key_rsa.pub
+openapi.json

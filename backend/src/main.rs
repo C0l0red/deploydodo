@@ -1,24 +1,15 @@
-mod db;
-mod dependencies;
-mod error;
-mod openapi;
-mod routes;
-mod services;
+use backend::dependencies;
+use backend::routes;
 
 use axum::{
     routing::{get, post},
-    Json, Router,
+    Router,
 };
 use tower_http::compression::CompressionLayer;
 use tower_http::cors::{Any, CorsLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-use utoipa::OpenApi;
 
 use dependencies::Dependencies;
-
-async fn openapi_json() -> Json<utoipa::openapi::OpenApi> {
-    Json(openapi::ApiDoc::openapi())
-}
 
 #[tokio::main]
 async fn main() {
@@ -68,7 +59,6 @@ async fn main() {
             "/api/jobs/{job_id}/events",
             get(routes::job_events::job_events),
         )
-        .route("/api/openapi.json", get(openapi_json))
         .with_state(deps)
         .layer(cors)
         .layer(CompressionLayer::new());

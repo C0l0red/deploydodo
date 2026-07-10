@@ -31,7 +31,7 @@ pub struct CreateLocalServerResponse {
     #[serde(rename = "serverType")]
     pub server_type: types::ServerType,
     pub hostname: String,
-    pub port: Option<u16>,
+    pub port: u16,
 }
 
 // ── Handler ───────────────────────────────────────────────────────────────────
@@ -60,19 +60,19 @@ pub async fn create_local_server(
 
     let server = deps
         .server_service
-        .create_local_server(&request.name, &request.hostname)
+        .create_local_server(&request.name)
         .await?;
 
-    tracing::info!(id = %server.id, "local server created");
+    tracing::info!(id = %server.id(), "local server created");
 
     Ok((
         StatusCode::CREATED,
         Json(CreateLocalServerResponse {
-            id: server.id,
-            name: server.name,
-            server_type: server.server_type,
-            hostname: server.hostname,
-            port: server.ssh_port,
+            id: *server.id(),
+            name: server.name().to_owned(),
+            server_type: server.server_type(),
+            hostname: server.hostname().to_owned(),
+            port: server.ssh_port().to_owned(),
         }),
     ))
 }
