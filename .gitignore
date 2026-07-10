@@ -14,3 +14,6 @@ frontend/dist
 .DS_Store
 **/.DS_Store
 *.db
+
+key_rsa
+key_rsa.pub

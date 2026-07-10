@@ -57,11 +57,7 @@ async fn forward_single(
             match tokio::io::AsyncReadExt::read(&mut tcp_rx, &mut buf).await {
                 Ok(0) => break,
                 Ok(n) => {
-                    if h_send
-                        .data(channel_id, buf[..n].to_vec())
-                        .await
-                        .is_err()
-                    {
+                    if h_send.data(channel_id, buf[..n].to_vec()).await.is_err() {
                         break;
                     }
                 }

@@ -7,8 +7,8 @@ use axum::{
 };
 use tokio::sync::broadcast::error::RecvError;
 
-use crate::dependencies::Dependencies;
 use crate::error::AppError;
+use crate::{dependencies::Dependencies, error::AppResult};
 
 #[utoipa::path(
     get,
@@ -23,7 +23,7 @@ use crate::error::AppError;
 pub async fn job_events(
     State(deps): State<Dependencies>,
     Path(job_id): Path<String>,
-) -> Result<Sse<impl futures_core::Stream<Item = Result<Event, Infallible>>>, AppError> {
+) -> AppResult<Sse<impl futures_core::Stream<Item = Result<Event, Infallible>>>> {
     let status = deps.job_service.get_job_status(&job_id).await?;
     if status.is_none() {
         return Err(AppError::JobNotFound);

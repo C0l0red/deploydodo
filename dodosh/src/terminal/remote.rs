@@ -4,7 +4,7 @@ use tokio::time;
 use crate::{
     session::SshTimeout,
     terminal::{self, TermSize},
-    SshAuth, ShellError, SshSession,
+    ShellError, SshAuth, SshSession,
 };
 
 pub async fn connect_remote(

@@ -22,6 +22,8 @@ async fn openapi_json() -> Json<utoipa::openapi::OpenApi> {
 
 #[tokio::main]
 async fn main() {
+    dotenv::dotenv().ok();
+
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or(

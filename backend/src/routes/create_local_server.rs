@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 use crate::dependencies::Dependencies;
-use crate::error::AppError;
+use crate::error::{AppError, AppResult};
 use crate::services::types;
 
 #[derive(Deserialize, ToSchema)]
@@ -13,7 +13,7 @@ pub struct CreateLocalServerRequest {
 }
 
 impl CreateLocalServerRequest {
-    fn validate(&self) -> Result<(), AppError> {
+    fn validate(&self) -> AppResult<()> {
         if self.name.trim().is_empty() {
             return Err(AppError::Validation("Name is required".into()));
         }
@@ -50,7 +50,7 @@ pub struct CreateLocalServerResponse {
 pub async fn create_local_server(
     State(deps): State<Dependencies>,
     Json(request): Json<CreateLocalServerRequest>,
-) -> Result<(StatusCode, Json<CreateLocalServerResponse>), AppError> {
+) -> AppResult<(StatusCode, Json<CreateLocalServerResponse>)> {
     request.validate()?;
 
     let count = deps.server_service.count_local_servers().await?;

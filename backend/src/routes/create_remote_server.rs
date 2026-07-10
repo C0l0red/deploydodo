@@ -5,7 +5,7 @@ use serde_json::json;
 use utoipa::ToSchema;
 
 use crate::dependencies::Dependencies;
-use crate::error::AppError;
+use crate::error::{AppError, AppResult};
 use crate::services::ssh_service::SshKey;
 use crate::services::types::JobType;
 
@@ -28,7 +28,7 @@ pub enum SshAuthRequest {
 }
 
 impl SshAuthRequest {
-    pub fn validate(&self) -> Result<(), AppError> {
+    pub fn validate(&self) -> AppResult<()> {
         match self {
             SshAuthRequest::Password { username, password } => {
                 if username.trim().is_empty() {
@@ -82,7 +82,7 @@ pub struct CreateRemoteServerRequest {
 }
 
 impl CreateRemoteServerRequest {
-    fn validate(&self) -> Result<(), AppError> {
+    fn validate(&self) -> AppResult<()> {
         if self.name.trim().is_empty() {
             return Err(AppError::Validation("Name is required".into()));
         }
@@ -176,7 +176,7 @@ fn create_connecting_remote_steps(active_key: StepKey) -> Vec<ConnectingStep> {
 pub async fn create_remote_server(
     State(deps): State<Dependencies>,
     Json(request): Json<CreateRemoteServerRequest>,
-) -> Result<(StatusCode, Json<StartJobResponse>), AppError> {
+) -> AppResult<(StatusCode, Json<StartJobResponse>)> {
     request.validate()?;
 
     let job_id = deps.job_service.create_job(JobType::CreateServer).await?;
@@ -209,7 +209,7 @@ async fn handle_remote(
     job_id: &str,
     request: &CreateRemoteServerRequest,
     deps: &Dependencies,
-) -> Result<(), AppError> {
+) -> AppResult<()> {
     let CreateRemoteServerRequest {
         name,
         hostname,
@@ -297,7 +297,7 @@ async fn create_ssh_key(
     key_name: &str,
     auth: &SshAuthRequest,
     deps: &Dependencies,
-) -> Result<SshKey, AppError> {
+) -> AppResult<SshKey> {
     match auth {
         SshAuthRequest::Password { username, password } => {
             deps.ssh_service
@@ -316,10 +316,7 @@ async fn create_ssh_key(
     }
 }
 
-async fn verify_docker_runtime(
-    session: &SshSession,
-    retry_after_install: bool,
-) -> Result<(), AppError> {
+async fn verify_docker_runtime(session: &SshSession, retry_after_install: bool) -> AppResult<()> {
     let docker_status = session.check_docker().await.map_err(AppError::Ssh)?;
     if docker_status.is_installed {
         let is_docker_installed_via_snap = session
@@ -350,7 +347,7 @@ async fn verify_docker_runtime(
     }
 }
 
-async fn install_docker(session: &SshSession) -> Result<(), AppError> {
+async fn install_docker(session: &SshSession) -> AppResult<()> {
     let output = session
         .run_command("curl -fsSL https://get.docker.com -o get-docker.sh")
         .await?;

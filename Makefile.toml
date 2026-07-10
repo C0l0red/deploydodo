@@ -1,11 +1,6 @@
 [config]
 default_to_workspace = false
 
-[env]
-DATABASE_URL = "sqlite:${CARGO_MAKE_WORKING_DIRECTORY}/backend/deploydodo.db"
-HOST_SSH_USERNAME = "benjamin"
-HOST_SSH_PRIVATE_KEY = "${CARGO_MAKE_WORKING_DIRECTORY}/backend/key_rsa"
-
 [tasks.backend]
 description = "Run the backend server"
 command = "cargo"

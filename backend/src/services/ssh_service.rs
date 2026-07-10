@@ -34,7 +34,7 @@ impl SshKey {
         &self.username
     }
 
-    pub fn get_secret(&self) -> Result<&str, AppError> {
+    pub fn get_secret(&self) -> AppResult<&str> {
         match self.auth_type {
             AuthType::Password => self.password.as_deref().ok_or(AppError::MissingKeySecret),
             AuthType::KeyPair => self
@@ -90,7 +90,7 @@ impl SshService {
         name: &str,
         username: &str,
         password: &str,
-    ) -> Result<SshKey, AppError> {
+    ) -> AppResult<SshKey> {
         let id: i64 = sqlx::query_scalar(
             "INSERT INTO ssh_keys (name, username, password, auth_type, created_at) VALUES ($1, $2, $3, $4, $5) RETURNING id",
         )
@@ -101,7 +101,7 @@ impl SshService {
         .bind(Utc::now())
         .fetch_one(&*self.db)
         .await
-        .map_err(AppError::Database)?;
+        ?;
 
         Ok(SshKey {
             id,
@@ -120,7 +120,7 @@ impl SshService {
         username: &str,
         private_key: &str,
         public_key: Option<&str>,
-    ) -> Result<SshKey, AppError> {
+    ) -> AppResult<SshKey> {
         let id: i64 = sqlx::query_scalar(
             "INSERT INTO ssh_keys (name, username, private_key, public_key, auth_type, created_at) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
         )
@@ -132,7 +132,7 @@ impl SshService {
         .bind(Utc::now())
         .fetch_one(&*self.db)
         .await
-        .map_err(AppError::Database)?;
+        ?;
 
         Ok(SshKey {
             id,
@@ -152,15 +152,15 @@ impl SshService {
         .bind(key_id)
         .fetch_optional(&*self.db)
         .await
-        .map_err(AppError::Database)?;
+        ?;
 
         let row = row.ok_or(AppError::Validation("SSH key not found".into()))?;
 
         Ok(SshKey {
-            id: row.try_get("id").map_err(AppError::Database)?,
-            name: row.try_get("name").map_err(AppError::Database)?,
-            username: row.try_get("username").map_err(AppError::Database)?,
-            auth_type: row.try_get("auth_type").map_err(AppError::Database)?,
+            id: row.try_get("id")?,
+            name: row.try_get("name")?,
+            username: row.try_get("username")?,
+            auth_type: row.try_get("auth_type")?,
             password: row.try_get("password").ok(),
             private_key: row.try_get("private_key").ok(),
             public_key: row.try_get("public_key").ok(),

@@ -2,7 +2,10 @@ use axum::{extract::State, Json};
 use serde::Serialize;
 use utoipa::ToSchema;
 
-use crate::{dependencies::Dependencies, error::AppError};
+use crate::{
+    dependencies::Dependencies,
+    error::AppResult,
+};
 
 #[derive(Serialize, ToSchema)]
 pub struct StatusResponse {
@@ -24,7 +27,7 @@ pub struct StatusResponse {
     ),
     tag = "status"
 )]
-pub async fn status(State(deps): State<Dependencies>) -> Result<Json<StatusResponse>, AppError> {
+pub async fn status(State(deps): State<Dependencies>) -> AppResult<Json<StatusResponse>> {
     let is_admin_onboarded = deps
         .variables_service
         .get("is_admin_onboarded")

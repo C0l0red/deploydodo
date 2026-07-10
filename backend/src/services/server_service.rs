@@ -40,18 +40,15 @@ impl ServerService {
         Self { db }
     }
 
-    pub async fn count_local_servers(&self) -> Result<i64, AppError> {
-        sqlx::query_scalar("SELECT COUNT(*) FROM servers WHERE server_type = 'local'")
-            .fetch_one(&*self.db)
-            .await
-            .map_err(AppError::Database)
+    pub async fn count_local_servers(&self) -> AppResult<i64> {
+        Ok(
+            sqlx::query_scalar("SELECT COUNT(*) FROM servers WHERE server_type = 'local'")
+                .fetch_one(&*self.db)
+                .await?,
+        )
     }
 
-    pub async fn create_local_server(
-        &self,
-        name: &str,
-        hostname: &str,
-    ) -> Result<Server, AppError> {
+    pub async fn create_local_server(&self, name: &str, hostname: &str) -> AppResult<Server> {
         let id: i64 = sqlx::query_scalar(
             "INSERT INTO servers (name, server_type, hostname, ssh_port, created_at) VALUES ($1, $2, $3, $4, $5) RETURNING id",
         )
@@ -62,7 +59,7 @@ impl ServerService {
         .bind(Utc::now())
         .fetch_one(&*self.db)
         .await
-        .map_err(AppError::Database)?;
+        ?;
 
         Ok(Server {
             id,
@@ -74,43 +71,42 @@ impl ServerService {
         })
     }
 
-    pub async fn get_server_by_id(&self, server_id: i64) -> Result<Server, AppError> {
+    pub async fn get_server_by_id(&self, server_id: i64) -> AppResult<Server> {
         let row = sqlx::query(
             "SELECT id, name, server_type, hostname, ssh_port, ssh_key_id FROM servers WHERE id = $1",
         )
         .bind(server_id)
         .fetch_optional(&*self.db)
         .await
-        .map_err(AppError::Database)?
+        ?
         .ok_or(AppError::Validation("Server not found".into()))?;
 
         Ok(Server {
-            id: row.try_get("id").map_err(AppError::Database)?,
-            name: row.try_get("name").map_err(AppError::Database)?,
-            server_type: row.try_get("server_type").map_err(AppError::Database)?,
-            hostname: row.try_get("hostname").map_err(AppError::Database)?,
-            ssh_port: row.try_get("ssh_port").map_err(AppError::Database)?,
-            ssh_key_id: row.try_get("ssh_key_id").map_err(AppError::Database)?,
+            id: row.try_get("id")?,
+            name: row.try_get("name")?,
+            server_type: row.try_get("server_type")?,
+            hostname: row.try_get("hostname")?,
+            ssh_port: row.try_get("ssh_port")?,
+            ssh_key_id: row.try_get("ssh_key_id")?,
         })
     }
 
-    pub async fn list_servers(&self) -> Result<Vec<Server>, AppError> {
+    pub async fn list_servers(&self) -> AppResult<Vec<Server>> {
         let rows = sqlx::query(
             "SELECT id, name, server_type, hostname, ssh_port, ssh_key_id FROM servers ORDER BY id",
         )
         .fetch_all(&*self.db)
-        .await
-        .map_err(AppError::Database)?;
+        .await?;
 
         let mut servers = vec![];
         for row in rows {
             servers.push(Server {
-                id: row.try_get("id").map_err(AppError::Database)?,
-                name: row.try_get("name").map_err(AppError::Database)?,
-                server_type: row.try_get("server_type").map_err(AppError::Database)?,
-                hostname: row.try_get("hostname").map_err(AppError::Database)?,
-                ssh_port: row.try_get("ssh_port").map_err(AppError::Database)?,
-                ssh_key_id: row.try_get("ssh_key_id").map_err(AppError::Database)?,
+                id: row.try_get("id")?,
+                name: row.try_get("name")?,
+                server_type: row.try_get("server_type")?,
+                hostname: row.try_get("hostname")?,
+                ssh_port: row.try_get("ssh_port")?,
+                ssh_key_id: row.try_get("ssh_key_id")?,
             });
         }
         Ok(servers)
@@ -122,7 +118,7 @@ impl ServerService {
         hostname: &str,
         ssh_port: u16,
         ssh_key_id: i64,
-    ) -> Result<Server, AppError> {
+    ) -> AppResult<Server> {
         let server_id: i64 = sqlx::query_scalar(
             "INSERT INTO servers (name, server_type, hostname, ssh_port, ssh_key_id, created_at) \
              VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
@@ -134,8 +130,7 @@ impl ServerService {
         .bind(ssh_key_id)
         .bind(Utc::now())
         .fetch_one(&*self.db)
-        .await
-        .map_err(AppError::Database)?;
+        .await?;
 
         Ok(Server {
             id: server_id,

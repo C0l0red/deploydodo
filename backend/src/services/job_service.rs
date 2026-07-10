@@ -9,7 +9,7 @@ use tokio::sync::broadcast;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use crate::error::AppError;
+use crate::error::AppResult;
 
 #[derive(Clone, Debug)]
 pub struct BroadcastEvent {
@@ -46,7 +46,7 @@ impl JobService {
         }
     }
 
-    pub async fn create_job(&self, job_type: JobType) -> Result<String, AppError> {
+    pub async fn create_job(&self, job_type: JobType) -> AppResult<String> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
 
@@ -59,8 +59,7 @@ impl JobService {
         .bind(now)
         .bind(now)
         .execute(&*self.db)
-        .await
-        .map_err(AppError::Database)?;
+        .await?;
 
         let (tx, _) = broadcast::channel(128);
         self.senders.lock().unwrap().insert(id.clone(), tx);
@@ -69,7 +68,7 @@ impl JobService {
     }
 
     /// Persist an event to the database and broadcast it to all current subscribers.
-    pub async fn emit(&self, job_id: &str, event_type: &str, data: Value) -> Result<(), AppError> {
+    pub async fn emit(&self, job_id: &str, event_type: &str, data: Value) -> AppResult<()> {
         let data_str = data.to_string();
         let now = Utc::now();
 
@@ -82,8 +81,7 @@ impl JobService {
         .bind(&data_str)
         .bind(now)
         .fetch_one(&*self.db)
-        .await
-        .map_err(AppError::Database)?;
+        .await?;
 
         let event = BroadcastEvent {
             db_id,
@@ -101,7 +99,7 @@ impl JobService {
 
     /// Mark the job as finished and drop its broadcast sender, closing the channel
     /// for all subscribers.
-    pub async fn finish_job(&self, job_id: &str, status: &str) -> Result<(), AppError> {
+    pub async fn finish_job(&self, job_id: &str, status: &str) -> AppResult<()> {
         let now = Utc::now();
 
         sqlx::query("UPDATE jobs SET status = $1, updated_at = $2 WHERE id = $3")
@@ -109,8 +107,7 @@ impl JobService {
             .bind(now)
             .bind(job_id)
             .execute(&*self.db)
-            .await
-            .map_err(AppError::Database)?;
+            .await?;
 
         // Dropping the sender signals `RecvError::Closed` to all receivers.
         self.senders.lock().unwrap().remove(job_id);
@@ -119,15 +116,14 @@ impl JobService {
     }
 
     /// Load all persisted events for a job in insertion order.
-    pub async fn get_events(&self, job_id: &str) -> Result<Vec<StoredEvent>, AppError> {
+    pub async fn get_events(&self, job_id: &str) -> AppResult<Vec<StoredEvent>> {
         let rows: Vec<(i64, String, String)> = sqlx::query_as(
             "SELECT id, event_type, data FROM job_events \
              WHERE job_id = $1 ORDER BY id ASC",
         )
         .bind(job_id)
         .fetch_all(&*self.db)
-        .await
-        .map_err(AppError::Database)?;
+        .await?;
 
         Ok(rows
             .into_iter()
@@ -150,11 +146,10 @@ impl JobService {
     }
 
     /// Fetch the current status string for a job, or `None` if not found.
-    pub async fn get_job_status(&self, job_id: &str) -> Result<Option<String>, AppError> {
-        sqlx::query_scalar("SELECT status FROM jobs WHERE id = $1")
+    pub async fn get_job_status(&self, job_id: &str) -> AppResult<Option<String>> {
+        Ok(sqlx::query_scalar("SELECT status FROM jobs WHERE id = $1")
             .bind(job_id)
             .fetch_optional(&*self.db)
-            .await
-            .map_err(AppError::Database)
+            .await?)
     }
 }

@@ -19,8 +19,8 @@ pub struct Dependencies {
 
 impl Dependencies {
     pub async fn init() -> Result<Self, sqlx::Error> {
-        let database_url =
-            std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite:./deploydodo.db".into());
+        let database_url = std::env::var("DATABASE_URL")
+            .expect("The variable DATABASE_URL must be present at runtime");
 
         let db = Arc::new(db::create_pool(&database_url).await?);
         let user_service = Arc::new(UserService::new(db.clone()));

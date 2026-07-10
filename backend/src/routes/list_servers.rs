@@ -3,7 +3,7 @@ use serde::Serialize;
 use utoipa::ToSchema;
 
 use crate::dependencies::Dependencies;
-use crate::error::AppError;
+use crate::error::AppResult;
 use crate::services::types;
 
 #[derive(Serialize, ToSchema)]
@@ -27,7 +27,7 @@ pub struct ServerResponse {
 )]
 pub async fn list_servers(
     State(deps): State<Dependencies>,
-) -> Result<(StatusCode, Json<Vec<ServerResponse>>), AppError> {
+) -> AppResult<(StatusCode, Json<Vec<ServerResponse>>)> {
     let servers = deps.server_service.list_servers().await?;
 
     Ok((
