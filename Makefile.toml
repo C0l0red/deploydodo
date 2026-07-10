@@ -9,12 +9,19 @@ args = ["run", "-p", "backend"]
 [tasks.build-backend]
 description = "Run the backend server"
 command = "cargo"
-args = ["build", "-p", "backend"]
+args = ["build", "--release", "-p", "backend"]
 
 [tasks.frontend]
 description = "Run the frontend development server"
+dependencies = ["generate-schema"]
 command = "npm"
 args = ["run", "dev", "--prefix", "frontend"]
+
+[tasks.build-frontend]
+description = "Run the frontend development server"
+dependencies = ["generate-schema"]
+command = "npm"
+args = ["run", "build", "--prefix", "frontend"]
 
 [tasks.migration]
 description = "Add a new database migration"
@@ -48,7 +55,7 @@ args = ["run", "generate:api", "--prefix", "frontend"]
 
 [tasks.dev]
 description = "Run backend and frontend concurrently"
-dependencies = ["generate-schema"]
 run_task = { name = ["backend", "frontend"], parallel = true }
 
-[tasks.default]
+[tasks.build]
+dependencies = ["build-backend", "build-frontend"]
