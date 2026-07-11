@@ -30,6 +30,7 @@ services:
       - "3000:3000"
     networks:
       - dodonet
+      - public
     depends_on:
       dododb:
         condition: service_healthy
@@ -38,6 +39,7 @@ services:
 networks:
   dodonet:
     internal: true
+  public: {}
 
 volumes:
   dododb-data:

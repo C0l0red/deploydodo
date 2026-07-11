@@ -49,8 +49,7 @@ cwd = "backend"
 [tasks.migrate]
 description = "Run database migrations"
 command = "cargo"
-args = ["run", "--bin", "db_migrate"]
-cwd = "backend"
+args = ["run", "-p", "backend", "--bin", "db_migrate"]
 
 [tasks.download-schema]
 description = "Saves the OpenApi schema from the backend"

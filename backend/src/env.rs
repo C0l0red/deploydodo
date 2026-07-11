@@ -26,16 +26,16 @@ pub fn init_env() {
 
     ENVIRONMENT
         .set(Arc::new(Environment {
-            database_url: read_type("DATABASE_URL"),
-            local_ssh_hostname: read_type("LOCAL_SSH_HOSTNAME"),
-            local_ssh_port: read_type("LOCAL_SSH_PORT"),
-            local_ssh_username: read_type("LOCAL_SSH_USERNAME"),
-            local_ssh_private_key: read_type("LOCAL_SSH_PRIVATE_KEY"),
+            database_url: read_env("DATABASE_URL"),
+            local_ssh_hostname: read_env("LOCAL_SSH_HOSTNAME"),
+            local_ssh_port: read_env("LOCAL_SSH_PORT"),
+            local_ssh_username: read_env("LOCAL_SSH_USERNAME"),
+            local_ssh_private_key: read_file_path_from_env("LOCAL_SSH_PRIVATE_KEY"),
         }))
         .expect("You should call env::init_env only once.")
 }
 
-fn read_type<T>(key: &str) -> T
+fn read_env<T>(key: &str) -> T
 where
     T: FromStr + Debug + TypeName,
     <T as FromStr>::Err: Debug,
@@ -46,6 +46,13 @@ where
                 .expect(format!("{key} must be a valid {}", T::type_name()).as_ref())
         })
         .expect(format!("The variable {key} must be present at runtime").as_ref())
+}
+
+fn read_file_path_from_env(key: &str) -> String {
+    let path = read_env::<String>(key);
+
+    std::fs::read_to_string(path)
+        .expect(format!("The path stored in {key} does not exist").as_ref())
 }
 
 trait TypeName {
