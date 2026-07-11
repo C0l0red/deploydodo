@@ -6,6 +6,11 @@ description = "Run the backend server"
 command = "cargo"
 args = ["run", "-p", "backend"]
 
+[tasks.build-backend-debug]
+description = "Build the backend server"
+command = "cargo"
+args = ["build", "-p", "backend"]
+
 [tasks.build-backend]
 description = "Build the backend server"
 command = "cargo"
@@ -69,6 +74,9 @@ run_task = { name = ["backend", "frontend"], parallel = true }
 
 [tasks.build]
 dependencies = ["build-backend", "build-frontend"]
+
+[tasks.build-debug]
+dependencies = ["build-backend-debug", "build-frontend"]
 
 [tasks.compose]
 command = "docker"
