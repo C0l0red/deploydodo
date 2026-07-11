@@ -8,9 +8,13 @@ frontend/dist
 
 # Env
 .env
-.env.local
+local.env
 
 .claude
 .DS_Store
 **/.DS_Store
 *.db
+
+key_rsa
+key_rsa.pub
+openapi.json

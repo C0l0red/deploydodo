@@ -83,7 +83,9 @@ export function useTerminalSocket(
       clearTimeout(resizeTimer)
       resizeObserver.disconnect()
       dataSub.dispose()
-      ws.close()
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.close()
+      }
       term.dispose()
     }
   }, [containerRef, serverId])

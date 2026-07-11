@@ -3,7 +3,7 @@ use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
-use crate::error::AppError;
+use crate::error::{AppError, AppResult};
 use crate::{
     dependencies::Dependencies,
     services::types::{AccountType, User},
@@ -17,7 +17,7 @@ pub struct CreateAdminRequest {
 }
 
 impl CreateAdminRequest {
-    pub fn validate(&self) -> Result<(), AppError> {
+    pub fn validate(&self) -> AppResult<()> {
         if self.name.trim().is_empty() {
             return Err(AppError::Validation("Name is required".into()));
         }
@@ -71,7 +71,7 @@ pub struct AdminResponse {
 pub async fn create_admin(
     State(deps): State<Dependencies>,
     Json(request): Json<CreateAdminRequest>,
-) -> Result<(StatusCode, Json<AdminResponse>), AppError> {
+) -> AppResult<(StatusCode, Json<AdminResponse>)> {
     request.validate()?;
 
     let count = deps.user_service.count_users().await?;

@@ -2,7 +2,10 @@ use axum::{extract::State, http::StatusCode, Json};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
-use crate::{dependencies::Dependencies, error::AppError};
+use crate::{
+    dependencies::Dependencies,
+    error::{AppError, AppResult},
+};
 
 #[derive(Deserialize, ToSchema)]
 pub struct LoginRequest {
@@ -29,7 +32,7 @@ pub struct LoginResponse {
 pub async fn login(
     State(deps): State<Dependencies>,
     Json(request): Json<LoginRequest>,
-) -> Result<(StatusCode, Json<LoginResponse>), AppError> {
+) -> AppResult<(StatusCode, Json<LoginResponse>)> {
     let user = deps
         .user_service
         .get_by_email(&request.email)

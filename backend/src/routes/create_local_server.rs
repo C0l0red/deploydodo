@@ -3,22 +3,18 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 use crate::dependencies::Dependencies;
-use crate::error::AppError;
+use crate::error::{AppError, AppResult};
 use crate::services::types;
 
 #[derive(Deserialize, ToSchema)]
 pub struct CreateLocalServerRequest {
     pub name: String,
-    pub hostname: String,
 }
 
 impl CreateLocalServerRequest {
-    fn validate(&self) -> Result<(), AppError> {
+    fn validate(&self) -> AppResult<()> {
         if self.name.trim().is_empty() {
             return Err(AppError::Validation("Name is required".into()));
-        }
-        if self.hostname.trim().is_empty() {
-            return Err(AppError::Validation("Hostname is required".into()));
         }
         Ok(())
     }
@@ -31,7 +27,7 @@ pub struct CreateLocalServerResponse {
     #[serde(rename = "serverType")]
     pub server_type: types::ServerType,
     pub hostname: String,
-    pub port: Option<u16>,
+    pub port: u16,
 }
 
 // ── Handler ───────────────────────────────────────────────────────────────────
@@ -50,7 +46,7 @@ pub struct CreateLocalServerResponse {
 pub async fn create_local_server(
     State(deps): State<Dependencies>,
     Json(request): Json<CreateLocalServerRequest>,
-) -> Result<(StatusCode, Json<CreateLocalServerResponse>), AppError> {
+) -> AppResult<(StatusCode, Json<CreateLocalServerResponse>)> {
     request.validate()?;
 
     let count = deps.server_service.count_local_servers().await?;
@@ -60,19 +56,19 @@ pub async fn create_local_server(
 
     let server = deps
         .server_service
-        .create_local_server(&request.name, &request.hostname)
+        .create_local_server(&request.name)
         .await?;
 
-    tracing::info!(id = %server.id, "local server created");
+    tracing::info!(id = %server.id(), "local server created");
 
     Ok((
         StatusCode::CREATED,
         Json(CreateLocalServerResponse {
-            id: server.id,
-            name: server.name,
-            server_type: server.server_type,
-            hostname: server.hostname,
-            port: server.ssh_port,
+            id: *server.id(),
+            name: server.name().to_owned(),
+            server_type: server.server_type(),
+            hostname: server.hostname().to_owned(),
+            port: server.ssh_port().to_owned(),
         }),
     ))
 }

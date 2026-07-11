@@ -4,13 +4,13 @@ use argon2::{password_hash::SaltString, Argon2, PasswordHasher, PasswordVerifier
 use chrono::DateTime;
 use rand_core::OsRng;
 use serde::Serialize;
-use sqlx::{FromRow, SqlitePool, Type};
+use sqlx::{FromRow, PgPool, Type};
 use utoipa::ToSchema;
 
-use crate::error::AppError;
+use crate::error::{AppError, AppResult};
 
 pub struct UserService {
-    db: Arc<SqlitePool>,
+    db: Arc<PgPool>,
 }
 
 #[derive(Type, Serialize, ToSchema)]
@@ -32,7 +32,7 @@ pub struct User {
 }
 
 impl User {
-    pub fn verify_password(&self, password: &str) -> Result<(), AppError> {
+    pub fn verify_password(&self, password: &str) -> AppResult<()> {
         let parsed_hash = argon2::PasswordHash::new(&self.password_hash)
             .map_err(|e| AppError::InternalServerError(e.to_string()))?;
         Argon2::default()
@@ -40,7 +40,7 @@ impl User {
             .map_err(|_| AppError::InvalidCredentials)
     }
 
-    pub fn get_id(&self) -> Result<i64, AppError> {
+    pub fn get_id(&self) -> AppResult<i64> {
         self.id.ok_or(AppError::InternalServerError(
             "id is None in User type".to_string(),
         ))
@@ -48,14 +48,14 @@ impl User {
 }
 
 impl UserService {
-    pub fn new(db: Arc<SqlitePool>) -> Self {
+    pub fn new(db: Arc<PgPool>) -> Self {
         Self { db }
     }
 
-    pub async fn create_user(&self, mut user: User) -> Result<User, AppError> {
+    pub async fn create_user(&self, mut user: User) -> AppResult<User> {
         user.password_hash = Self::hash_password(&user.password_hash)?;
 
-        sqlx::query_as::<_, User>(
+        Ok(sqlx::query_as::<_, User>(
             "INSERT INTO users (name, email, password_hash, account_type, created_at) VALUES ($1, $2, $3, $4, $5) RETURNING *",
         )
         .bind(&user.name)
@@ -64,27 +64,25 @@ impl UserService {
         .bind(&user.account_type)
         .bind(&user.created_at)
         .fetch_one(&*self.db)
-        .await.map_err(AppError::Database)
+        .await?)
     }
 
-    pub async fn count_users(&self) -> Result<i64, AppError> {
-        sqlx::query_scalar("SELECT COUNT(*) FROM users")
+    pub async fn count_users(&self) -> AppResult<i64> {
+        Ok(sqlx::query_scalar("SELECT COUNT(*) FROM users")
             .fetch_one(&*self.db)
-            .await
-            .map_err(AppError::Database)
+            .await?)
     }
 
-    pub async fn get_by_email(&self, email: &str) -> Result<Option<User>, AppError> {
-        sqlx::query_as::<_, User>(
+    pub async fn get_by_email(&self, email: &str) -> AppResult<Option<User>> {
+        Ok(sqlx::query_as::<_, User>(
             "SELECT id, name, email, password_hash, account_type, created_at FROM users WHERE email = $1",
         )
         .bind(email)
         .fetch_optional(&*self.db)
-        .await
-        .map_err(AppError::Database)
+        .await?)
     }
 
-    fn hash_password(password: &str) -> Result<String, AppError> {
+    fn hash_password(password: &str) -> AppResult<String> {
         let salt = SaltString::generate(&mut OsRng);
         Argon2::default()
             .hash_password(password.as_bytes(), &salt)

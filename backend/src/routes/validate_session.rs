@@ -2,7 +2,10 @@ use axum::{extract::State, http::HeaderMap, Json};
 use serde::Serialize;
 use utoipa::ToSchema;
 
-use crate::{dependencies::Dependencies, error::AppError};
+use crate::{
+    dependencies::Dependencies,
+    error::{AppError, AppResult},
+};
 
 #[derive(Serialize, ToSchema)]
 pub struct ValidateSessionResponse {
@@ -21,7 +24,7 @@ pub struct ValidateSessionResponse {
 pub async fn validate_session(
     State(deps): State<Dependencies>,
     headers: HeaderMap,
-) -> Result<Json<ValidateSessionResponse>, AppError> {
+) -> AppResult<Json<ValidateSessionResponse>> {
     let token = headers
         .get("Authorization")
         .and_then(|v| v.to_str().ok())

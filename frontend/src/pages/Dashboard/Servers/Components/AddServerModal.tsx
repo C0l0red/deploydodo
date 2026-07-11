@@ -89,7 +89,7 @@ export function AddServerModal({ open, onClose, onSuccess }: AddServerModalProps
 
       if (values.serverType === 'local') {
         createLocal.mutate(
-          { name: values.name.trim(), hostname: values.hostname.trim() },
+          { name: values.name.trim() },
           {
             onSuccess: (result) => {
               if (result.error) {

@@ -1,28 +1,29 @@
 use std::sync::Arc;
 
 use chrono::Utc;
-use sqlx::SqlitePool;
+use sqlx::PgPool;
 
-use crate::error::AppError;
+use crate::error::AppResult;
 
 pub struct VariablesService {
-    db: Arc<SqlitePool>,
+    db: Arc<PgPool>,
 }
 
 impl VariablesService {
-    pub fn new(db: Arc<SqlitePool>) -> Self {
+    pub fn new(db: Arc<PgPool>) -> Self {
         Self { db }
     }
 
-    pub async fn get(&self, name: &str) -> Result<Option<String>, AppError> {
-        sqlx::query_scalar("SELECT value FROM variables WHERE name = $1")
-            .bind(name)
-            .fetch_optional(&*self.db)
-            .await
-            .map_err(AppError::Database)
+    pub async fn get(&self, name: &str) -> AppResult<Option<String>> {
+        Ok(
+            sqlx::query_scalar("SELECT value FROM variables WHERE name = $1")
+                .bind(name)
+                .fetch_optional(&*self.db)
+                .await?,
+        )
     }
 
-    pub async fn set(&self, name: &str, value: &str) -> Result<(), AppError> {
+    pub async fn set(&self, name: &str, value: &str) -> AppResult<()> {
         sqlx::query(
             "INSERT INTO variables (name, value, created_at) VALUES ($1, $2, $3)
              ON CONFLICT(name) DO UPDATE SET value = excluded.value",
@@ -31,8 +32,7 @@ impl VariablesService {
         .bind(value)
         .bind(Utc::now())
         .execute(&*self.db)
-        .await
-        .map_err(AppError::Database)?;
+        .await?;
 
         Ok(())
     }

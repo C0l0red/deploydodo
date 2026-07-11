@@ -45,7 +45,7 @@ function FieldInput({
   name: string
   value: string
   onChange: React.ChangeEventHandler<HTMLInputElement>
-  onBlur: React.FocusEventHandler<HTMLInputElement>
+  onBlur?: React.FocusEventHandler<HTMLInputElement>
   placeholder: string
   hasError?: boolean
 }) {
@@ -107,7 +107,7 @@ export function LocalServerView({
     e.preventDefault()
     if (!name.trim()) return
     setError(null)
-    createLocal.mutate({ name: name.trim(), hostname: hostname.trim() || 'localhost' })
+    createLocal.mutate({ name: name.trim() })
   }
 
   return (

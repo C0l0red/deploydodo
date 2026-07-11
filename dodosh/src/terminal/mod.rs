@@ -1,12 +1,12 @@
-use crate::SshError;
-
 mod docker_local;
 mod docker_remote;
-mod local;
-mod remote;
+mod host;
 
-pub use remote::connect_remote;
-use remote::{remote_read, remote_resize, remote_write};
+pub use host::connect_host;
+
+use host::{host_read, host_resize, host_write};
+
+use crate::ShellError;
 
 pub struct TermSize {
     cols: u32,
@@ -22,17 +22,15 @@ impl TermSize {
 pub enum Terminal {
     DockerLocal,
     DockerRemote,
-    Local,
-    Remote(russh::Channel<russh::client::Msg>),
+    Host(russh::Channel<russh::client::Msg>),
 }
 
 impl Terminal {
-    pub async fn write(&self, input: &[u8]) -> Result<(), SshError> {
+    pub async fn write(&self, input: &[u8]) -> Result<(), ShellError> {
         match self {
             Terminal::DockerLocal => unimplemented!(),
             Terminal::DockerRemote => unimplemented!(),
-            Terminal::Local => unimplemented!(),
-            Terminal::Remote(channel) => remote_write(channel, input).await,
+            Terminal::Host(channel) => host_write(channel, input).await,
         }
     }
 
@@ -40,17 +38,15 @@ impl Terminal {
         match self {
             Terminal::DockerLocal => unimplemented!(),
             Terminal::DockerRemote => unimplemented!(),
-            Terminal::Local => unimplemented!(),
-            Terminal::Remote(channel) => remote_read(channel).await,
+            Terminal::Host(channel) => host_read(channel).await,
         }
     }
 
-    pub async fn resize(&self, cols: u32, rows: u32) -> Result<(), SshError> {
+    pub async fn resize(&self, cols: u32, rows: u32) -> Result<(), ShellError> {
         match self {
             Terminal::DockerLocal => unimplemented!(),
             Terminal::DockerRemote => unimplemented!(),
-            Terminal::Local => unimplemented!(),
-            Terminal::Remote(channel) => remote_resize(channel, cols, rows).await,
+            Terminal::Host(channel) => host_resize(channel, cols, rows).await,
         }
     }
 }

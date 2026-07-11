@@ -3,7 +3,7 @@ use serde::Serialize;
 use utoipa::ToSchema;
 
 use crate::dependencies::Dependencies;
-use crate::error::AppError;
+use crate::error::AppResult;
 use crate::services::types;
 
 #[derive(Serialize, ToSchema)]
@@ -14,7 +14,7 @@ pub struct ServerResponse {
     pub server_type: types::ServerType,
     pub hostname: String,
     #[serde(rename = "sshPort")]
-    pub ssh_port: Option<u16>,
+    pub ssh_port: u16,
 }
 
 #[utoipa::path(
@@ -27,7 +27,7 @@ pub struct ServerResponse {
 )]
 pub async fn list_servers(
     State(deps): State<Dependencies>,
-) -> Result<(StatusCode, Json<Vec<ServerResponse>>), AppError> {
+) -> AppResult<(StatusCode, Json<Vec<ServerResponse>>)> {
     let servers = deps.server_service.list_servers().await?;
 
     Ok((
@@ -36,11 +36,11 @@ pub async fn list_servers(
             servers
                 .into_iter()
                 .map(|s| ServerResponse {
-                    id: s.id,
-                    name: s.name,
-                    server_type: s.server_type,
-                    hostname: s.hostname,
-                    ssh_port: s.ssh_port,
+                    id: *s.id(),
+                    name: s.name().to_owned(),
+                    server_type: s.server_type().to_owned(),
+                    hostname: s.hostname().to_owned(),
+                    ssh_port: s.ssh_port(),
                 })
                 .collect(),
         ),

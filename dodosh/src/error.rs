@@ -2,7 +2,7 @@ use thiserror::Error;
 use tokio::time;
 
 #[derive(Debug, Error)]
-pub enum SshError {
+pub enum ShellError {
     #[error("ssh error: {0}")]
     Ssh(#[from] russh::Error),
     #[error("timeout error: {0}")]

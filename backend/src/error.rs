@@ -38,7 +38,7 @@ pub enum AppError {
     MissingKeySecret,
 
     #[error("Connection error: {0}")]
-    Ssh(#[from] dodosh::SshError),
+    Ssh(#[from] dodosh::ShellError),
 
     #[error("job not found")]
     JobNotFound,

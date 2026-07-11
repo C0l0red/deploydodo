@@ -1,11 +1,14 @@
-use std::sync::Arc;
+use std::{sync::Arc, u16};
 
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
-use sqlx::{Row, SqlitePool};
+use sqlx::{PgPool, Row};
 use utoipa::ToSchema;
 
-use crate::error::{AppError, AppResult};
+use crate::{
+    env::get_env,
+    error::{AppError, AppResult},
+};
 
 #[derive(Debug, Serialize, Deserialize, ToSchema, sqlx::Type, Clone, PartialEq)]
 #[serde(rename_all = "lowercase")]
@@ -15,104 +18,152 @@ pub enum ServerType {
     Remote,
 }
 
-#[derive(Debug)]
-pub struct Server {
-    pub id: i64,
-    pub name: String,
-    pub server_type: ServerType,
-    pub hostname: String,
-    pub ssh_port: Option<u16>,
-    pub ssh_key_id: Option<i64>,
+impl ServerType {
+    pub fn is_local(&self) -> bool {
+        matches!(self, Self::Local)
+    }
 }
 
-impl Server {
-    pub fn ssh_port(&self) -> AppResult<u16> {
-        self.ssh_port.ok_or(AppError::InternalServerError(
-            "ssh_port of Server is None".to_string(),
-        ))
+#[derive(Debug)]
+pub enum Server {
+    Remote {
+        id: i64,
+        name: String,
+        hostname: String,
+        ssh_port: u16,
+        ssh_key_id: i64,
+    },
+    Local {
+        id: i64,
+        name: String,
+    },
+}
+
+impl<'a> Server {
+    pub fn id(&'a self) -> &'a i64 {
+        match self {
+            Server::Local { id, .. } | Server::Remote { id, .. } => id,
+        }
+    }
+
+    pub fn name(&'a self) -> &'a str {
+        match self {
+            Server::Local { name, .. } | Server::Remote { name, .. } => name,
+        }
+    }
+
+    pub fn server_type(&'a self) -> ServerType {
+        match self {
+            Server::Remote { .. } => ServerType::Remote,
+            Server::Local { .. } => ServerType::Local,
+        }
+    }
+
+    pub fn ssh_port(&self) -> u16 {
+        match self {
+            Server::Remote { ssh_port, .. } => *ssh_port,
+            Server::Local { .. } => get_env().local_ssh_port,
+        }
+    }
+
+    pub fn hostname(&self) -> String {
+        match self {
+            Server::Remote { hostname, .. } => hostname.to_owned(),
+            Server::Local { .. } => get_env().local_ssh_hostname.to_owned(),
+        }
     }
 }
 
 pub struct ServerService {
-    db: Arc<SqlitePool>,
+    db: Arc<PgPool>,
 }
 
 impl ServerService {
-    pub fn new(db: Arc<SqlitePool>) -> Self {
+    pub fn new(db: Arc<PgPool>) -> Self {
         Self { db }
     }
 
-    pub async fn count_local_servers(&self) -> Result<i64, AppError> {
-        sqlx::query_scalar("SELECT COUNT(*) FROM servers WHERE server_type = 'local'")
-            .fetch_one(&*self.db)
-            .await
-            .map_err(AppError::Database)
+    pub async fn count_local_servers(&self) -> AppResult<i64> {
+        Ok(
+            sqlx::query_scalar("SELECT COUNT(*) FROM servers WHERE server_type = 'local'")
+                .fetch_one(&*self.db)
+                .await?,
+        )
     }
 
-    pub async fn create_local_server(
-        &self,
-        name: &str,
-        hostname: &str,
-    ) -> Result<Server, AppError> {
+    pub async fn create_local_server(&self, name: &str) -> AppResult<Server> {
         let id: i64 = sqlx::query_scalar(
-            "INSERT INTO servers (name, server_type, hostname, created_at) VALUES ($1, $2, $3, $4) RETURNING id",
+            "INSERT INTO servers (name, server_type, created_at) VALUES ($1, $2, $3) RETURNING id",
         )
         .bind(name)
         .bind(ServerType::Local)
-        .bind(hostname)
         .bind(Utc::now())
         .fetch_one(&*self.db)
-        .await
-        .map_err(AppError::Database)?;
+        .await?;
 
-        Ok(Server {
+        Ok(Server::Local {
             id,
             name: name.to_string(),
-            server_type: ServerType::Local,
-            hostname: hostname.to_string(),
-            ssh_port: None,
-            ssh_key_id: None,
         })
     }
 
-    pub async fn get_server_by_id(&self, server_id: i64) -> Result<Server, AppError> {
+    pub async fn get_server_by_id(&self, server_id: i64) -> AppResult<Server> {
         let row = sqlx::query(
             "SELECT id, name, server_type, hostname, ssh_port, ssh_key_id FROM servers WHERE id = $1",
         )
         .bind(server_id)
         .fetch_optional(&*self.db)
         .await
-        .map_err(AppError::Database)?
+        ?
         .ok_or(AppError::Validation("Server not found".into()))?;
 
-        Ok(Server {
-            id: row.try_get("id").map_err(AppError::Database)?,
-            name: row.try_get("name").map_err(AppError::Database)?,
-            server_type: row.try_get("server_type").map_err(AppError::Database)?,
-            hostname: row.try_get("hostname").map_err(AppError::Database)?,
-            ssh_port: row.try_get("ssh_port").map_err(AppError::Database)?,
-            ssh_key_id: row.try_get("ssh_key_id").map_err(AppError::Database)?,
+        let server_type: ServerType = row.try_get("server_type")?;
+
+        Ok(if server_type.is_local() {
+            Server::Local {
+                id: row.try_get("id")?,
+                name: row.try_get("name")?,
+            }
+        } else {
+            let port: i32 = row.try_get("ssh_port")?;
+            Server::Remote {
+                id: row.try_get("id")?,
+                name: row.try_get("name")?,
+                hostname: row.try_get("hostname")?,
+                ssh_port: port as u16,
+                ssh_key_id: row.try_get("ssh_key_id")?,
+            }
         })
     }
 
-    pub async fn list_servers(&self) -> Result<Vec<Server>, AppError> {
+    pub async fn list_servers(&self) -> AppResult<Vec<Server>> {
         let rows = sqlx::query(
             "SELECT id, name, server_type, hostname, ssh_port, ssh_key_id FROM servers ORDER BY id",
         )
         .fetch_all(&*self.db)
-        .await
-        .map_err(AppError::Database)?;
+        .await?;
 
         let mut servers = vec![];
         for row in rows {
-            servers.push(Server {
-                id: row.try_get("id").map_err(AppError::Database)?,
-                name: row.try_get("name").map_err(AppError::Database)?,
-                server_type: row.try_get("server_type").map_err(AppError::Database)?,
-                hostname: row.try_get("hostname").map_err(AppError::Database)?,
-                ssh_port: row.try_get("ssh_port").map_err(AppError::Database)?,
-                ssh_key_id: row.try_get("ssh_key_id").map_err(AppError::Database)?,
-            });
+            let server_type: ServerType = row.try_get("server_type")?;
+
+            let server = if server_type.is_local() {
+                Server::Local {
+                    id: row.try_get("id")?,
+                    name: row.try_get("name")?,
+                }
+            } else {
+                let port: i32 = row.try_get("ssh_port")?;
+                Server::Remote {
+                    id: row.try_get("id")?,
+                    name: row.try_get("name")?,
+                    hostname: row.try_get("hostname")?,
+                    ssh_port: port as u16,
+                    ssh_key_id: row.try_get("ssh_key_id")?,
+                }
+            };
+
+            servers.push(server);
         }
         Ok(servers)
     }
@@ -123,7 +174,7 @@ impl ServerService {
         hostname: &str,
         ssh_port: u16,
         ssh_key_id: i64,
-    ) -> Result<Server, AppError> {
+    ) -> AppResult<Server> {
         let server_id: i64 = sqlx::query_scalar(
             "INSERT INTO servers (name, server_type, hostname, ssh_port, ssh_key_id, created_at) \
              VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
@@ -131,20 +182,18 @@ impl ServerService {
         .bind(name)
         .bind(ServerType::Remote)
         .bind(hostname)
-        .bind(ssh_port)
+        .bind(ssh_port as i32)
         .bind(ssh_key_id)
         .bind(Utc::now())
         .fetch_one(&*self.db)
-        .await
-        .map_err(AppError::Database)?;
+        .await?;
 
-        Ok(Server {
+        Ok(Server::Remote {
             id: server_id,
             name: name.to_string(),
-            server_type: ServerType::Remote,
             hostname: hostname.to_string(),
-            ssh_port: Some(ssh_port),
-            ssh_key_id: Some(ssh_key_id),
+            ssh_port: ssh_port,
+            ssh_key_id: ssh_key_id,
         })
     }
 }

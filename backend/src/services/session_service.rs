@@ -2,32 +2,31 @@ use std::sync::Arc;
 
 use chrono::Utc;
 use rand_core::{OsRng, RngCore};
-use sqlx::SqlitePool;
+use sqlx::PgPool;
 
-use crate::error::AppError;
+use crate::error::AppResult;
 
 pub struct SessionService {
-    db: Arc<SqlitePool>,
+    db: Arc<PgPool>,
 }
 
 impl SessionService {
-    pub fn new(db: Arc<SqlitePool>) -> Self {
+    pub fn new(db: Arc<PgPool>) -> Self {
         Self { db }
     }
 
-    pub async fn validate_session(&self, token: &str) -> Result<bool, AppError> {
+    pub async fn validate_session(&self, token: &str) -> AppResult<bool> {
         let exists: bool = sqlx::query_scalar(
             "SELECT EXISTS(SELECT * FROM auth_sessions WHERE session_token = $1)",
         )
         .bind(token)
         .fetch_one(&*self.db)
-        .await
-        .map_err(AppError::Database)?;
+        .await?;
 
         Ok(exists)
     }
 
-    pub async fn create_session(&self, user_id: i64) -> Result<String, AppError> {
+    pub async fn create_session(&self, user_id: i64) -> AppResult<String> {
         let mut bytes = [0u8; 32];
         OsRng.fill_bytes(&mut bytes);
         let token = bytes.map(|b| format!("{b:02x}")).concat();
@@ -39,8 +38,7 @@ impl SessionService {
         .bind(&token)
         .bind(Utc::now())
         .execute(&*self.db)
-        .await
-        .map_err(AppError::Database)?;
+        .await?;
 
         Ok(token)
     }

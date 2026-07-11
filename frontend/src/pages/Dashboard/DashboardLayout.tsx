@@ -10,7 +10,6 @@ import {
   NavProjectsIcon,
   NavServersIcon,
   NavSourcesIcon,
-  NavDestinationsIcon,
   NavSharedVariablesIcon,
   NavKeysIcon,
   NavTerminalIcon,
