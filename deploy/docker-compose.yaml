@@ -1,0 +1,39 @@
+name: deploydodo-staging
+services:
+  dododb:
+    image: postgres:15.18-alpine3.24
+    environment:
+      POSTGRES_USER: deploydodo
+      POSTGRES_PASSWORD: deploydodo
+      POSTGRES_DB: deploydodo
+    volumes:
+      - dododb-data:/var/lib/postgresql/data
+    networks:
+      - internal
+    restart: unless-stopped
+
+  deploydodo:
+    env_file: local.env
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    extra_hosts:
+      - "deploydodo.host:host-gateway"
+    volumes:
+      - ../key_rsa:/key_rsa
+    ports:
+      - "3000:3000"
+    networks:
+      - internal
+      - public
+    depends_on:
+      - dododb
+    restart: unless-stopped
+
+networks:
+  internal:
+    internal: true
+  public: {}
+
+volumes:
+  dododb-data:
