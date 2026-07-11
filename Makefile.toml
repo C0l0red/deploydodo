@@ -7,9 +7,21 @@ command = "cargo"
 args = ["run", "-p", "backend"]
 
 [tasks.build-backend]
-description = "Run the backend server"
+description = "Build the backend server"
 command = "cargo"
-args = ["build", "--release", "-p", "backend"]
+args = [
+    "build", "--release", "-p", "backend"]
+
+[tasks.build-backend-linux]
+description = "Build the backend server for linux"
+command = "cargo"
+args = [
+    "build",
+    "--release",
+    "-p", "backend",
+    "--target", "aarch64-unknown-linux-musl",
+    "--config", "target.aarch64-unknown-linux-musl.linker=\"aarch64-unknown-linux-gnu-gcc\""
+]
 
 [tasks.frontend]
 description = "Run the frontend development server"
@@ -18,7 +30,7 @@ command = "npm"
 args = ["run", "dev", "--prefix", "frontend"]
 
 [tasks.build-frontend]
-description = "Run the frontend development server"
+description = "Build the frontend development server"
 dependencies = ["generate-schema"]
 command = "npm"
 args = ["run", "build", "--prefix", "frontend"]
@@ -59,3 +71,7 @@ run_task = { name = ["backend", "frontend"], parallel = true }
 
 [tasks.build]
 dependencies = ["build-backend", "build-frontend"]
+
+[tasks.compose]
+command = "docker"
+args = ["compose", "-f", "deploy/docker-compose.yaml", "up", "-d", "--build"]

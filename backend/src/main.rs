@@ -7,12 +7,15 @@ use axum::{
 };
 use tower_http::compression::CompressionLayer;
 use tower_http::cors::{Any, CorsLayer};
+use tower_http::services::ServeDir;
+use tower_http::services::ServeFile;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use dependencies::Dependencies;
 
 #[tokio::main]
 async fn main() {
+    #[cfg(debug_assertions)]
     dotenv::dotenv().ok();
 
     tracing_subscriber::registry()
@@ -33,7 +36,12 @@ async fn main() {
         .allow_methods(Any)
         .allow_headers(Any);
 
+    let index_resource = ServeFile::new("dist/index.html");
+
+    let static_files = ServeDir::new("dist").not_found_service(index_resource);
+
     let app = Router::new()
+        .fallback_service(static_files)
         .route("/api/health", get(routes::health::health))
         .route("/api/status", get(routes::status::status))
         .route("/api/servers", get(routes::list_servers::list_servers))

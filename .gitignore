@@ -8,7 +8,7 @@ frontend/dist
 
 # Env
 .env
-.env.local
+local.env
 
 .claude
 .DS_Store
