@@ -1,10 +1,10 @@
 mod docker_local;
 mod docker_remote;
-mod remote;
+mod host;
 
-pub use remote::connect_remote;
+pub use host::connect_host;
 
-use remote::{remote_read, remote_resize, remote_write};
+use host::{host_read, host_resize, host_write};
 
 use crate::ShellError;
 
@@ -22,7 +22,7 @@ impl TermSize {
 pub enum Terminal {
     DockerLocal,
     DockerRemote,
-    Remote(russh::Channel<russh::client::Msg>),
+    Host(russh::Channel<russh::client::Msg>),
 }
 
 impl Terminal {
@@ -30,7 +30,7 @@ impl Terminal {
         match self {
             Terminal::DockerLocal => unimplemented!(),
             Terminal::DockerRemote => unimplemented!(),
-            Terminal::Remote(channel) => remote_write(channel, input).await,
+            Terminal::Host(channel) => host_write(channel, input).await,
         }
     }
 
@@ -38,7 +38,7 @@ impl Terminal {
         match self {
             Terminal::DockerLocal => unimplemented!(),
             Terminal::DockerRemote => unimplemented!(),
-            Terminal::Remote(channel) => remote_read(channel).await,
+            Terminal::Host(channel) => host_read(channel).await,
         }
     }
 
@@ -46,7 +46,7 @@ impl Terminal {
         match self {
             Terminal::DockerLocal => unimplemented!(),
             Terminal::DockerRemote => unimplemented!(),
-            Terminal::Remote(channel) => remote_resize(channel, cols, rows).await,
+            Terminal::Host(channel) => host_resize(channel, cols, rows).await,
         }
     }
 }

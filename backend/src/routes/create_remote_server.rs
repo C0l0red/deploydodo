@@ -274,6 +274,8 @@ async fn handle_remote(
         .create_remote_server(name, hostname, *port, *ssh_key.id())
         .await?;
 
+    tracing::info!(id = %&server.id(), ssh_key_id = ssh_key.id(), "remote server created");
+
     deps.job_service
         .emit(
             job_id,

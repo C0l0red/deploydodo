@@ -20,7 +20,7 @@ pub enum AuthType {
 
 impl AuthType {
     pub fn is_keypair(&self) -> bool {
-        matches!(self, Self::Password)
+        matches!(self, Self::KeyPair)
     }
 }
 
@@ -40,7 +40,6 @@ pub enum SshKey {
     },
 }
 
-#[allow(dead_code)]
 impl<'a> SshKey {
     pub fn id(&'a self) -> &'a i64 {
         match self {

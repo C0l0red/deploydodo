@@ -194,15 +194,13 @@ impl ServerService {
              VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
         )
         .bind(name)
-        .bind("remote")
+        .bind(ServerType::Remote)
         .bind(hostname)
         .bind(ssh_port as i32)
         .bind(ssh_key_id)
         .bind(Utc::now())
         .fetch_one(&*self.db)
         .await?;
-
-        tracing::info!(id = %server_id, ssh_key_id = ssh_key_id, "remote server created");
 
         Ok(Server::Remote {
             id: server_id,

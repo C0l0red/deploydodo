@@ -21,7 +21,7 @@ pub async fn terminal_init(
 
     let ssh_key = deps.ssh_service.get_key_for_server(&server).await?;
 
-    Ok(terminal::connect_remote(
+    Ok(terminal::connect_host(
         server.hostname(),
         *server.ssh_port(),
         ssh_key.username(),

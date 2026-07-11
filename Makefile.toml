@@ -9,8 +9,7 @@ args = ["run", "-p", "backend"]
 [tasks.build-backend]
 description = "Build the backend server"
 command = "cargo"
-args = [
-    "build", "--release", "-p", "backend"]
+args = ["build", "--release", "-p", "backend"]
 
 [tasks.build-backend-linux]
 description = "Build the backend server for linux"
@@ -64,9 +63,14 @@ dependencies = ["download-schema"]
 command = "npm"
 args = ["run", "generate:api", "--prefix", "frontend"]
 
+[tasks.deploy-dev-db]
+description = "Deploy the dev DB to port 5432"
+command = "docker"
+args = ["compose", "-f", "dev.docker-compose.yaml", "up", "-d"]
 
 [tasks.dev]
 description = "Run backend and frontend concurrently"
+dependencies = ["deploy-dev-db", "migrate"]
 run_task = { name = ["backend", "frontend"], parallel = true }
 
 [tasks.build]
@@ -74,4 +78,4 @@ dependencies = ["build-backend", "build-frontend"]
 
 [tasks.compose]
 command = "docker"
-args = ["compose", "-f", "deploy/docker-compose.yaml", "up", "-d", "--build"]
+args = ["compose", "-f", "staging.docker-compose.yaml", "up", "-d", "--build"]

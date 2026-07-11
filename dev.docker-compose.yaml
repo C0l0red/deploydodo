@@ -1,3 +1,4 @@
+name: deploydodo-dev
 services:
   dododb:
     image: postgres:15.18-alpine3.24

@@ -7,7 +7,7 @@ use crate::{
     ShellError, SshAuth, SshSession,
 };
 
-pub async fn connect_remote(
+pub async fn connect_host(
     hostname: &str,
     port: u16,
     username: &str,
@@ -28,17 +28,17 @@ pub async fn connect_remote(
     .await??;
     time::timeout(request_timeout, channel.request_shell(true)).await??;
 
-    Ok(terminal::Terminal::Remote(channel))
+    Ok(terminal::Terminal::Host(channel))
 }
 
-pub async fn remote_write(
+pub async fn host_write(
     channel: &russh::Channel<russh::client::Msg>,
     input: &[u8],
 ) -> Result<(), ShellError> {
     Ok(channel.data(input).await?)
 }
 
-pub async fn remote_read(channel: &mut russh::Channel<russh::client::Msg>) -> Option<Vec<u8>> {
+pub async fn host_read(channel: &mut russh::Channel<russh::client::Msg>) -> Option<Vec<u8>> {
     loop {
         match channel.wait().await? {
             russh::ChannelMsg::Data { data } => return Some(data.to_vec()),
@@ -48,7 +48,7 @@ pub async fn remote_read(channel: &mut russh::Channel<russh::client::Msg>) -> Op
     }
 }
 
-pub async fn remote_resize(
+pub async fn host_resize(
     channel: &russh::Channel<russh::client::Msg>,
     cols: u32,
     rows: u32,

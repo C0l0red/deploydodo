@@ -9,31 +9,29 @@ services:
     volumes:
       - dododb-data:/var/lib/postgresql/data
     networks:
-      - internal
+      - dodonet
     restart: unless-stopped
 
   deploydodo:
     env_file: local.env
     build:
-      context: ..
-      dockerfile: deploy/Dockerfile
+      context: .
+      dockerfile: Dockerfile
     extra_hosts:
       - "deploydodo.host:host-gateway"
     volumes:
-      - ../key_rsa:/key_rsa
+      - ./key_rsa:/key_rsa
     ports:
       - "3000:3000"
     networks:
-      - internal
-      - public
+      - dodonet
     depends_on:
       - dododb
     restart: unless-stopped
 
 networks:
-  internal:
+  dodonet:
     internal: true
-  public: {}
 
 volumes:
   dododb-data:
