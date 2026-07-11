@@ -6,7 +6,9 @@ use crate::env::get_env;
 pub async fn create_pool() -> sqlx::Result<PgPool> {
     let database_url = get_env().database_url.to_owned();
 
-    connect_with_retry(&database_url).await
+    let pool = connect_with_retry(&database_url).await?;
+    sqlx::migrate!("./migrations").run(&pool).await.unwrap();
+    Ok(pool)
 }
 
 async fn connect_with_retry(url: &str) -> sqlx::Result<sqlx::PgPool> {

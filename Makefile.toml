@@ -46,11 +46,6 @@ command = "sqlx"
 args = ["migrate", "revert"]
 cwd = "backend"
 
-[tasks.migrate]
-description = "Run database migrations"
-command = "cargo"
-args = ["run", "-p", "backend", "--bin", "db_migrate"]
-
 [tasks.download-schema]
 description = "Saves the OpenApi schema from the backend"
 command = "cargo"
@@ -69,7 +64,7 @@ args = ["compose", "-f", "dev.docker-compose.yaml", "up", "-d"]
 
 [tasks.dev]
 description = "Run backend and frontend concurrently"
-dependencies = ["deploy-dev-db", "migrate"]
+dependencies = ["deploy-dev-db"]
 run_task = { name = ["backend", "frontend"], parallel = true }
 
 [tasks.build]
