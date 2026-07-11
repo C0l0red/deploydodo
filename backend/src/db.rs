@@ -1,14 +1,25 @@
-use sqlx::{
-    postgres::{PgConnectOptions, PgPool},
-    ConnectOptions,
-};
-use std::str::FromStr;
+use sqlx::postgres::{PgPool, PgPoolOptions};
+use std::time::Duration;
 
-pub async fn create_pool() -> Result<PgPool, sqlx::Error> {
-    let database_url = std::env::var("DATABASE_URL")
-        .expect("The variable DATABASE_URL must be present at runtime");
+use crate::env::get_env;
 
-    let options = PgConnectOptions::from_str(&database_url)?.disable_statement_logging();
+pub async fn create_pool() -> sqlx::Result<PgPool> {
+    let database_url = get_env().database_url.to_owned();
 
-    PgPool::connect_with(options).await
+    connect_with_retry(&database_url).await
+}
+
+async fn connect_with_retry(url: &str) -> sqlx::Result<sqlx::PgPool> {
+    let mut attempt = 0;
+    loop {
+        match PgPoolOptions::new().max_connections(5).connect(url).await {
+            Ok(pool) => return Ok(pool),
+            Err(e) if attempt < 10 => {
+                attempt += 1;
+                tracing::warn!("postgres not ready (attempt {attempt}): {e}");
+                tokio::time::sleep(Duration::from_millis(500 * attempt)).await;
+            }
+            Err(e) => return Err(e),
+        }
+    }
 }

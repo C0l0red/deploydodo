@@ -9,16 +9,12 @@ use crate::services::types;
 #[derive(Deserialize, ToSchema)]
 pub struct CreateLocalServerRequest {
     pub name: String,
-    pub hostname: String,
 }
 
 impl CreateLocalServerRequest {
     fn validate(&self) -> AppResult<()> {
         if self.name.trim().is_empty() {
             return Err(AppError::Validation("Name is required".into()));
-        }
-        if self.hostname.trim().is_empty() {
-            return Err(AppError::Validation("Hostname is required".into()));
         }
         Ok(())
     }

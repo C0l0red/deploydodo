@@ -48,8 +48,8 @@ cwd = "backend"
 
 [tasks.migrate]
 description = "Run database migrations"
-command = "sqlx"
-args = ["migrate", "run"]
+command = "cargo"
+args = ["run", "--bin", "db_migrate"]
 cwd = "backend"
 
 [tasks.download-schema]

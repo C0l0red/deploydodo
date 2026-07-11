@@ -40,7 +40,7 @@ pub async fn list_servers(
                     name: s.name().to_owned(),
                     server_type: s.server_type().to_owned(),
                     hostname: s.hostname().to_owned(),
-                    ssh_port: *s.ssh_port(),
+                    ssh_port: s.ssh_port(),
                 })
                 .collect(),
         ),

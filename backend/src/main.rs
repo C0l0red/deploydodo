@@ -1,4 +1,5 @@
 use backend::dependencies;
+use backend::env;
 use backend::routes;
 
 use axum::{
@@ -15,8 +16,7 @@ use dependencies::Dependencies;
 
 #[tokio::main]
 async fn main() {
-    #[cfg(debug_assertions)]
-    dotenv::dotenv().ok();
+    env::init_env();
 
     tracing_subscriber::registry()
         .with(

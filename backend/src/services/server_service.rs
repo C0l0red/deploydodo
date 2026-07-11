@@ -3,13 +3,12 @@ use std::{sync::Arc, u16};
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use sqlx::{PgPool, Row};
-use tokio::sync::OnceCell;
 use utoipa::ToSchema;
 
-use crate::error::{AppError, AppResult};
-
-static LOCAL_SSH_PORT: OnceCell<u16> = OnceCell::const_new();
-static LOCAL_SSH_HOSTNAME: OnceCell<String> = OnceCell::const_new();
+use crate::{
+    env::get_env,
+    error::{AppError, AppResult},
+};
 
 #[derive(Debug, Serialize, Deserialize, ToSchema, sqlx::Type, Clone, PartialEq)]
 #[serde(rename_all = "lowercase")]
@@ -60,17 +59,17 @@ impl<'a> Server {
         }
     }
 
-    pub fn ssh_port(&'a self) -> &'a u16 {
+    pub fn ssh_port(&self) -> u16 {
         match self {
-            Server::Remote { ssh_port, .. } => ssh_port,
-            Server::Local { .. } => LOCAL_SSH_PORT.get().unwrap(),
+            Server::Remote { ssh_port, .. } => *ssh_port,
+            Server::Local { .. } => get_env().local_ssh_port,
         }
     }
 
-    pub fn hostname(&'a self) -> &'a str {
+    pub fn hostname(&self) -> String {
         match self {
-            Server::Remote { hostname, .. } => hostname,
-            Server::Local { .. } => LOCAL_SSH_HOSTNAME.get().unwrap(),
+            Server::Remote { hostname, .. } => hostname.to_owned(),
+            Server::Local { .. } => get_env().local_ssh_hostname.to_owned(),
         }
     }
 }
@@ -81,19 +80,6 @@ pub struct ServerService {
 
 impl ServerService {
     pub fn new(db: Arc<PgPool>) -> Self {
-        let port = std::env::var("LOCAL_SSH_PORT")
-            .map(|h| {
-                h.parse::<u16>()
-                    .expect("LOCAL_SSH_PORT must be a valid u16")
-            })
-            .expect("The variable LOCAL_SSH_PORT must be present at runtime");
-
-        let hostname = std::env::var("LOCAL_SSH_HOSTNAME")
-            .expect("The variable LOCAL_SSH_HOSTNAME must be present at runtime");
-
-        LOCAL_SSH_PORT.set(port).unwrap();
-        LOCAL_SSH_HOSTNAME.set(hostname).unwrap();
-
         Self { db }
     }
 

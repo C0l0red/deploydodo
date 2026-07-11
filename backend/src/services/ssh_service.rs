@@ -6,6 +6,7 @@ use sqlx::{PgPool, Row};
 use utoipa::ToSchema;
 
 use crate::{
+    env::get_env,
     error::{AppError, AppResult},
     services::server_service::Server,
 };
@@ -74,21 +75,12 @@ pub struct SshService {
 
 impl SshService {
     pub fn new(db: Arc<PgPool>) -> Self {
-        let host_ssh_username = std::env::var("LOCAL_SSH_USERNAME")
-            .expect("The variable HOST_SSH_USERNAME must be present at runtime");
-
-        let host_ssh_private_key = std::env::var("LOCAL_SSH_PRIVATE_KEY")
-            .ok()
-            .map(|path| {
-                std::fs::read_to_string(path)
-                    .expect("The path stored in LOCAL_SSH_PRIVATE_KEY does not exist")
-            })
-            .expect("The variable LOCAL_SSH_PRIVATE_KEY must be present at runtime");
+        let env = get_env();
 
         Self {
             db,
-            host_ssh_username,
-            host_ssh_private_key,
+            host_ssh_username: env.local_ssh_username.to_owned(),
+            host_ssh_private_key: env.local_ssh_private_key.to_owned(),
         }
     }
 
