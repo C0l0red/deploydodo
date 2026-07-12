@@ -3,11 +3,13 @@ import { createRootRoute, Outlet, redirect } from '@tanstack/react-router'
 export const rootRoute = createRootRoute({ component: Outlet })
 
 export async function requireAuth() {
-  const { validateSession, getStatus } = await import('@/api/queries')
-  const valid = await validateSession()
-  if (!valid) throw redirect({ to: '/login' })
+  const { queryClient } = await import('@/api/client')
+  const { validateSessionOptions, statusQueryOptions } = await import('@/api/queries')
 
-  const status = await getStatus()
+  const validateResponse = await queryClient.ensureQueryData(validateSessionOptions)
+  if (!validateResponse.valid) throw redirect({ to: '/login' })
+
+  const status = await queryClient.ensureQueryData(statusQueryOptions)
   if (!status.isAdminOnboarded) throw redirect({ to: '/onboarding' })
 
   return { status }

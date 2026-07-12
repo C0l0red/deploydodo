@@ -6,6 +6,7 @@ use utoipa::ToSchema;
 
 use crate::dependencies::Dependencies;
 use crate::error::{AppError, AppResult};
+use crate::extractors::Auth;
 use crate::services::ssh_service::SshKey;
 use crate::services::types::JobType;
 
@@ -166,14 +167,17 @@ fn create_connecting_remote_steps(active_key: StepKey) -> Vec<ConnectingStep> {
 #[utoipa::path(
     post,
     path = "/api/setup/server/remote",
+    params(
+        ("Authorization" = String, Header, description = "authorization token")
+    ),
     request_body = CreateRemoteServerRequest,
     responses(
         (status = 202, description = "Job accepted — stream progress via /api/jobs/{jobId}/events", body = StartJobResponse),
-        (status = 422, description = "Validation error"),
     ),
     tag = "setup"
 )]
 pub async fn create_remote_server(
+    _: Auth,
     State(deps): State<Dependencies>,
     Json(request): Json<CreateRemoteServerRequest>,
 ) -> AppResult<(StatusCode, Json<StartJobResponse>)> {

@@ -4,6 +4,7 @@ use utoipa::ToSchema;
 
 use crate::dependencies::Dependencies;
 use crate::error::AppResult;
+use crate::extractors::Auth;
 use crate::services::types;
 
 #[derive(Serialize, ToSchema)]
@@ -20,12 +21,16 @@ pub struct ServerResponse {
 #[utoipa::path(
     get,
     path = "/api/servers",
+    params(
+        ("Authorization" = String, Header, description = "authorization token")
+    ),
     responses(
         (status = 200, description = "List of all servers", body = Vec<ServerResponse>),
     ),
     tag = "servers"
 )]
 pub async fn list_servers(
+    _: Auth,
     State(deps): State<Dependencies>,
 ) -> AppResult<(StatusCode, Json<Vec<ServerResponse>>)> {
     let servers = deps.server_service.list_servers().await?;

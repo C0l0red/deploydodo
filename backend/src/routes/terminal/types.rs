@@ -5,7 +5,6 @@ use serde::Deserialize;
 pub struct TerminalParams {
     pub cols: u32,
     pub rows: u32,
-    pub token: String,
 }
 
 impl From<TerminalParams> for TermSize {

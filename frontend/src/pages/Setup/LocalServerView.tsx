@@ -3,7 +3,7 @@ import { ArrowBackIcon, WarningCircleIcon } from '@/assets/icons'
 import { cn } from '@/utilities/cn'
 import { useToast } from '@/components/Toast'
 import { useCreateLocalServer } from '@/api/mutations'
-import type { CreateLocalServerResponse } from '@/api/types'
+import type { CreateLocalServerResponse } from '@/api/Api'
 import { Card } from '@/pages/Dashboard/Servers/PageLayout'
 
 function FormField({
@@ -88,17 +88,15 @@ export function LocalServerView({
   const { toast } = useToast()
 
   const createLocal = useCreateLocalServer({
-    onSuccess: (result) => {
-      const { data, error: err } = result
-      if (err || !data) return
+    onSuccess: (data) => {
       toast('Local server configured', 'success')
       onSuccess(data)
     },
-    onError: (e) => {
-      if (e.message.includes('409') || e.message.includes('already exists')) {
+    onError: (error) => {
+      if (error.status === 409) {
         setError('A local server has already been configured.')
       } else {
-        setError(e.message || 'Failed to create local server.')
+        setError(error.message)
       }
     },
   })

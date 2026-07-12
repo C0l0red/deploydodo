@@ -6,9 +6,26 @@ import { TextInput } from '@/components/TextInput'
 import { Button } from '@/components/Button'
 import { LogoIcon, EyeOpenIcon, EyeClosedIcon } from '@/assets/icons'
 import { useToast } from '@/components/Toast'
-import { api } from '@/api/client'
+import { queryClient, setAuthToken } from '@/api/client'
+import { serversQueryOptions } from '@/api/queries'
+import { useLogin } from '@/api/mutations'
 
 export function Login() {
+  const login = useLogin({
+    onSuccess: async (data) => {
+      setAuthToken(data.sessionToken)
+      toast('Welcome back', 'success')
+
+      const servers = await queryClient.ensureQueryData(serversQueryOptions)
+      navigate({ to: servers.length > 0 ? '/dashboard' : '/welcome', replace: true })
+    },
+    onError: () => {
+      setError('Invalid email or password')
+    },
+    onSettled: () => {
+      setIsSubmitting(false)
+    },
+  })
   const navigate = useNavigate()
   const { toast } = useToast()
   const [showPassword, setShowPassword] = useState(false)
@@ -21,31 +38,16 @@ export function Login() {
       email: Yup.string().email('Invalid email').required('Email is required'),
       password: Yup.string().required('Password is required'),
     }),
-    onSubmit: async (values) => {
+    onSubmit: (values) => {
       setError(null)
       setIsSubmitting(true)
-      const { data, error } = await api.POST('/api/auth/login', {
-        body: { email: values.email.trim(), password: values.password },
-      })
-      setIsSubmitting(false)
-
-      if (error || !data) {
-        setError('Invalid email or password')
-        return
-      }
-
-      localStorage.setItem('session_token', data.sessionToken)
-      toast('Welcome back', 'success')
-
-      const { getServers } = await import('@/api/queries')
-      const servers = await getServers()
-      navigate({ to: servers.length > 0 ? '/dashboard' : '/welcome', replace: true })
+      login.mutate(values)
     },
   })
 
   return (
     <div className="w-full min-h-screen bg-linear-to-b from-[rgba(255,122,73,0.01)] to-[rgba(252,140,99,0.12)] flex items-center justify-center py-10 px-4">
-      <div className="bg-background rounded-xl shadow-[0px_8px_24px_0px_rgba(0,0,0,0.08),0px_0px_1px_0px_rgba(0,0,0,0.2)] w-[456px] max-w-full px-6 pt-4 pb-2.5">
+      <div className="bg-background rounded-xl shadow-[0px_8px_24px_0px_rgba(0,0,0,0.08),0px_0px_1px_0px_rgba(0,0,0,0.2)] w-114 max-w-full px-6 pt-4 pb-2.5">
         <div className="flex flex-col gap-6">
           <div className="flex flex-col items-center gap-3 pt-6">
             <div className="w-9 h-9 bg-primary-darker rounded-[10.8px] flex items-center justify-center">

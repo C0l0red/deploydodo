@@ -7,20 +7,23 @@ use axum::{
 };
 use tokio::sync::broadcast::error::RecvError;
 
-use crate::error::AppError;
 use crate::{dependencies::Dependencies, error::AppResult};
+use crate::{error::AppError, extractors::Auth};
 
 #[utoipa::path(
     get,
     path = "/api/jobs/{job_id}/events",
-    params(("job_id" = String, Path, description = "Job ID returned by the setup endpoint")),
+    params(
+        ("job_id" = String, Path, description = "Job ID returned by the setup endpoint"),
+            ("Authorization" = String, Header, description = "authorization token")
+        ),
     responses(
         (status = 200, description = "SSE stream of job progress events"),
-        (status = 404, description = "Job not found"),
     ),
     tag = "jobs"
 )]
 pub async fn job_events(
+    _: Auth,
     State(deps): State<Dependencies>,
     Path(job_id): Path<String>,
 ) -> AppResult<Sse<impl futures_core::Stream<Item = Result<Event, Infallible>>>> {

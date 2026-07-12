@@ -2,13 +2,10 @@ import { useState, useEffect, useCallback } from 'react'
 import { SectionCard, SectionHeader } from '..'
 import { useTerminalSocket } from '@/hooks/useTerminal'
 import type { TerminalMessage } from '@/hooks/useTerminal'
-import { useContainersQuery } from '@/api/queries'
-import {
-  type Line,
-  LineView,
-} from './terminal/TerminalOutput'
+
+import { type Line, LineView } from './terminal/TerminalOutput'
 import { TerminalPrompt } from './terminal/TerminalPrompt'
-import { useAutoConnect } from './terminal/useAutoConnect'
+// import { useAutoConnect } from './terminal/useAutoConnect'
 import { useAutoScroll } from './terminal/useAutoScroll'
 import { useTerminalScroll } from './terminal/useTerminalScroll'
 
@@ -39,30 +36,31 @@ function applyMessageToState(
 }
 
 export function TerminalTab({ serverId }: Props) {
-  const { data: containers, isLoading } = useContainersQuery(serverId)
-
   const [selectedContainer, setSelectedContainer] = useState<string | null>(null)
   const [lines, setLines] = useState<Line[]>([])
   const [terminalInput, setTerminalInput] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const [currentDir, setCurrentDir] = useState('/')
+  const [currentDir, setCurrentDir] = useState('/' + serverId)
 
   const containerRef = useAutoScroll(lines)
   const terminalScrollable = useTerminalScroll(containerRef)
 
-  const token = useCallback(() => {
-    return localStorage.getItem('session_token') ?? ''
+  // const token = useCallback(() => {
+  //   return localStorage.getItem('session_token') ?? ''
+  // }, [])
+
+  const {
+    connected,
+    // connect,
+    runCommand,
+    disconnect,
+    addListener,
+    removeListener,
+  } = useTerminalSocket()
+
+  const onOutput = useCallback((msg: TerminalMessage) => {
+    applyMessageToState(msg, setLines, setCurrentDir, setError)
   }, [])
-
-  const { connected, connect, runCommand, disconnect, addListener, removeListener } =
-    useTerminalSocket()
-
-  const onOutput = useCallback(
-    (msg: TerminalMessage) => {
-      applyMessageToState(msg, setLines, setCurrentDir, setError)
-    },
-    [],
-  )
 
   useEffect(() => {
     addListener(onOutput)
@@ -78,20 +76,20 @@ export function TerminalTab({ serverId }: Props) {
     return () => disconnect()
   }, [disconnect])
 
-  const handleConnect = useCallback(
-    (containerId: string) => {
-      setError(null)
-      setCurrentDir('/')
-      setSelectedContainer(containerId)
-      if (!connected) {
-        setLines([])
-        connect(serverId, token())
-      }
-    },
-    [connected, connect, serverId, token],
-  )
+  // const handleConnect = useCallback(
+  //   (containerId: string) => {
+  //     setError(null)
+  //     setCurrentDir('/')
+  //     setSelectedContainer(containerId)
+  //     if (!connected) {
+  //       setLines([])
+  //       connect(serverId, token())
+  //     }
+  //   },
+  //   [connected, connect, serverId, token],
+  // )
 
-  useAutoConnect(containers, handleConnect)
+  // useAutoConnect(containers, handleConnect)
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -116,31 +114,31 @@ export function TerminalTab({ serverId }: Props) {
     [terminalInput, selectedContainer, runCommand],
   )
 
-  if (isLoading) {
-    return (
-      <SectionCard>
-        <SectionHeader title="Terminal" subtitle="Loading containers..." />
-        <div className="flex items-center justify-center py-20">
-          <span className="font-manrope text-sm text-text-secondary">
-            Looking for running containers...
-          </span>
-        </div>
-      </SectionCard>
-    )
-  }
+  // if (isLoading) {
+  //   return (
+  //     <SectionCard>
+  //       <SectionHeader title="Terminal" subtitle="Loading containers..." />
+  //       <div className="flex items-center justify-center py-20">
+  //         <span className="font-manrope text-sm text-text-secondary">
+  //           Looking for running containers...
+  //         </span>
+  //       </div>
+  //     </SectionCard>
+  //   )
+  // }
 
-  if (!containers || containers.length === 0) {
-    return (
-      <SectionCard>
-        <SectionHeader title="Terminal" subtitle="No containers available" />
-        <div className="flex items-center justify-center py-20">
-          <span className="font-manrope text-sm text-text-secondary">
-            No running containers found on this server.
-          </span>
-        </div>
-      </SectionCard>
-    )
-  }
+  // if (!containers || containers.length === 0) {
+  //   return (
+  //     <SectionCard>
+  //       <SectionHeader title="Terminal" subtitle="No containers available" />
+  //       <div className="flex items-center justify-center py-20">
+  //         <span className="font-manrope text-sm text-text-secondary">
+  //           No running containers found on this server.
+  //         </span>
+  //       </div>
+  //     </SectionCard>
+  //   )
+  // }
 
   if (!selectedContainer || !connected) {
     return (
@@ -151,9 +149,7 @@ export function TerminalTab({ serverId }: Props) {
         />
         <div className="flex items-center justify-center py-20">
           <span className="font-manrope text-sm text-text-secondary">
-            {connected
-              ? 'Selecting container...'
-              : 'Establishing connection...'}
+            {connected ? 'Selecting container...' : 'Establishing connection...'}
           </span>
         </div>
       </SectionCard>
@@ -182,12 +178,8 @@ export function TerminalTab({ serverId }: Props) {
       )}
       <div
         ref={containerRef}
-        className={`border border-neutral-100 rounded-xl py-5 px-3 min-h-[550px] font-mono text-sm flex flex-col bg-[#1c1c1c] text-[#c6c6c6] select-text cursor-text ${terminalScrollable ? 'max-h-[700px] overflow-y-auto' : 'overflow-y-hidden'}`}
-        onClick={() =>
-          document
-            .getElementById('terminal-input')
-            ?.focus({ preventScroll: true })
-        }
+        className={`border border-neutral-100 rounded-xl py-5 px-3 min-h-137.5 font-mono text-sm flex flex-col bg-[#1c1c1c] text-[#c6c6c6] select-text cursor-text ${terminalScrollable ? 'max-h-175 overflow-y-auto' : 'overflow-y-hidden'}`}
+        onClick={() => document.getElementById('terminal-input')?.focus({ preventScroll: true })}
       >
         {lines.map((line, i) => (
           <LineView key={i} index={i} line={line} currentDir={currentDir} />

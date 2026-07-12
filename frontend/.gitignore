@@ -13,7 +13,7 @@ dist-ssr
 *.local
 
 # Generated API schema (run npm run generate:api to regenerate)
-src/api/schema.d.ts
+src/api/Api.ts
 
 # Editor directories and files
 .vscode/*

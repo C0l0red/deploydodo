@@ -4,7 +4,7 @@ use chrono::Utc;
 use rand_core::{OsRng, RngCore};
 use sqlx::PgPool;
 
-use crate::error::AppResult;
+use crate::{error::AppResult, services::types::User};
 
 pub struct SessionService {
     db: Arc<PgPool>,
@@ -15,15 +15,13 @@ impl SessionService {
         Self { db }
     }
 
-    pub async fn validate_session(&self, token: &str) -> AppResult<bool> {
-        let exists: bool = sqlx::query_scalar(
-            "SELECT EXISTS(SELECT * FROM auth_sessions WHERE session_token = $1)",
+    pub async fn get_session_user(&self, token: &str) -> AppResult<Option<User>> {
+        Ok(
+            sqlx::query_as("SELECT * FROM users WHERE id = (SELECT user_id FROM auth_sessions WHERE session_token = $1 LIMIT 1)")
+                .bind(token)
+                .fetch_optional(&*self.db)
+                .await?,
         )
-        .bind(token)
-        .fetch_one(&*self.db)
-        .await?;
-
-        Ok(exists)
     }
 
     pub async fn create_session(&self, user_id: i64) -> AppResult<String> {

@@ -6,6 +6,7 @@ import { Button } from '@/components/Button'
 import { useToast } from '@/components/Toast'
 import { useCreateAdmin } from '@/api/mutations'
 import { EyeOpenIcon, EyeClosedIcon } from '@/assets/icons'
+import { setAuthToken } from '@/api/client'
 
 const RULES = [
   { label: 'At least 8 characters', test: (p: string) => p.length >= 8 },
@@ -78,9 +79,8 @@ export function ChoosePassword({ name, email, onBack, onCreateAccount }: ChooseP
   const { toast } = useToast()
 
   const createAdmin = useCreateAdmin({
-    onSuccess: ({ data, error }) => {
-      if (error || !data) return
-      localStorage.setItem('session_token', data.sessionToken)
+    onSuccess: (data) => {
+      setAuthToken(data.sessionToken)
       toast('Account created successfully', 'success')
       onCreateAccount()
     },
@@ -93,7 +93,7 @@ export function ChoosePassword({ name, email, onBack, onCreateAccount }: ChooseP
   })
 
   return (
-    <div className="bg-background rounded-xl shadow-[0px_8px_24px_0px_rgba(0,0,0,0.08),0px_0px_1px_0px_rgba(0,0,0,0.2)] w-[456px] max-w-full px-6 pt-4 pb-2.5">
+    <div className="bg-background rounded-xl shadow-[0px_8px_24px_0px_rgba(0,0,0,0.08),0px_0px_1px_0px_rgba(0,0,0,0.2)] w-114 max-w-full px-6 pt-4 pb-2.5">
       <div className="flex flex-col gap-6">
         <div className="flex items-center gap-3">
           <button

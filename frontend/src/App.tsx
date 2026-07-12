@@ -1,6 +1,6 @@
 import { RouterProvider } from '@tanstack/react-router'
-import { router } from '@/router'
+import { createAppRouter } from '@/router'
 
-export default function App() {
-  return <RouterProvider router={router} />
+export default async function App() {
+  return <RouterProvider router={await createAppRouter()} />
 }

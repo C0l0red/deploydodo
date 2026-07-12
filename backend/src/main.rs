@@ -1,5 +1,6 @@
 use backend::dependencies;
 use backend::env;
+use backend::middleware;
 use backend::routes;
 
 use axum::{
@@ -68,6 +69,7 @@ async fn main() {
             get(routes::job_events::job_events),
         )
         .with_state(deps)
+        .layer(axum::middleware::from_fn(middleware::bearer_auth))
         .layer(cors)
         .layer(CompressionLayer::new());
 

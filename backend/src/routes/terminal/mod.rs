@@ -9,8 +9,10 @@ use axum::extract::{Path, Query, State};
 use axum::response::IntoResponse;
 
 use crate::dependencies::Dependencies;
+use crate::extractors::Auth;
 
 pub async fn terminal_ws(
+    _: Auth,
     ws: WebSocketUpgrade,
     Query(params): Query<TerminalParams>,
     State(deps): State<Dependencies>,

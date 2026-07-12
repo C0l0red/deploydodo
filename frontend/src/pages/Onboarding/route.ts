@@ -7,11 +7,13 @@ export const onboardingRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/onboarding',
   beforeLoad: async () => {
-    const { getStatus, validateSession } = await import('@/api/queries')
-    const status = await getStatus()
+    const { queryClient } = await import('@/api/client')
+    const { statusQueryOptions, validateSessionOptions } = await import('@/api/queries')
+
+    const status = await queryClient.ensureQueryData(statusQueryOptions)
     if (status.isAdminOnboarded) {
-      const isLoggedIn = await validateSession()
-      throw redirect({ to: isLoggedIn ? '/welcome' : '/login' })
+      const validateSession = await queryClient.ensureQueryData(validateSessionOptions)
+      throw redirect({ to: validateSession.valid ? '/welcome' : '/login' })
     }
   },
   pendingComponent: Pending,

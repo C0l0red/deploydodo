@@ -1,7 +1,7 @@
 use dodosh::{terminal, SshTimeout};
 
 use crate::dependencies::Dependencies;
-use crate::error::{AppError, AppResult};
+use crate::error::AppResult;
 use crate::routes::terminal::TerminalParams;
 
 pub async fn terminal_init(
@@ -9,14 +9,6 @@ pub async fn terminal_init(
     params: TerminalParams,
     deps: &Dependencies,
 ) -> AppResult<terminal::Terminal> {
-    let valid = deps
-        .session_service
-        .validate_session(params.token.trim())
-        .await?;
-    if !valid {
-        return Err(AppError::Unauthorized);
-    }
-
     let server = deps.server_service.get_server_by_id(server_id).await?;
 
     let ssh_key = deps.ssh_service.get_key_for_server(&server).await?;

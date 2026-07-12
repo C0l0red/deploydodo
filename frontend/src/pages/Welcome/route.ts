@@ -11,8 +11,10 @@ export const welcomeRoute = createRoute({
     if (status.isServerSetup) throw redirect({ to: '/dashboard' })
   },
   loader: async () => {
-    const { getStatus } = await import('@/api/queries')
-    return getStatus()
+    const { queryClient } = await import('@/api/client')
+    const { statusQueryOptions } = await import('@/api/queries')
+
+    return await queryClient.ensureQueryData(statusQueryOptions)
   },
   pendingComponent: Pending,
   component: Welcome,

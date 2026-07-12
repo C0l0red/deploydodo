@@ -153,8 +153,7 @@ export function RemoteServerView({
           auth,
         },
         {
-          onSuccess: ({ data, error }) => {
-            if (error || !data) return
+          onSuccess: (data) => {
             onConnect(data.jobId)
           },
         },
@@ -325,7 +324,7 @@ export function RemoteServerView({
               </div>
             )}
 
-            {!!createRemoteServer.data?.error && (
+            {!!createRemoteServer.error && (
               <p className="font-manrope font-normal text-sm leading-6 text-error">
                 Failed to start connection. Please check your details and try again.
               </p>

@@ -4,6 +4,7 @@ use utoipa::ToSchema;
 
 use crate::dependencies::Dependencies;
 use crate::error::{AppError, AppResult};
+use crate::extractors::Auth;
 use crate::services::types;
 
 #[derive(Deserialize, ToSchema)]
@@ -36,14 +37,16 @@ pub struct CreateLocalServerResponse {
     post,
     path = "/api/setup/server/local",
     request_body = CreateLocalServerRequest,
+    params(
+        ("Authorization" = String, Header, description = "authorization token")
+    ),
     responses(
         (status = 201, description = "Local server created", body = CreateLocalServerResponse),
-        (status = 409, description = "A local server already exists"),
-        (status = 422, description = "Validation error"),
     ),
     tag = "setup"
 )]
 pub async fn create_local_server(
+    _: Auth,
     State(deps): State<Dependencies>,
     Json(request): Json<CreateLocalServerRequest>,
 ) -> AppResult<(StatusCode, Json<CreateLocalServerResponse>)> {

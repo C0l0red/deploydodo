@@ -1,13 +1,9 @@
 use axum::{extract::State, http::StatusCode, Json};
-use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 use crate::error::{AppError, AppResult};
-use crate::{
-    dependencies::Dependencies,
-    services::types::{AccountType, User},
-};
+use crate::{dependencies::Dependencies, services::types::AccountType};
 
 #[derive(Deserialize, ToSchema)]
 pub struct CreateAdminRequest {
@@ -31,17 +27,6 @@ impl CreateAdminRequest {
         }
         Ok(())
     }
-
-    pub fn to_admin_user(self) -> User {
-        User {
-            id: None,
-            name: self.name,
-            email: self.email,
-            password_hash: self.password,
-            account_type: AccountType::Admin,
-            created_at: Utc::now(),
-        }
-    }
 }
 
 #[derive(Serialize, ToSchema)]
@@ -63,8 +48,6 @@ pub struct AdminResponse {
     request_body = CreateAdminRequest,
     responses(
         (status = 201, description = "Admin user created", body = AdminResponse),
-        (status = 409, description = "Admin already configured"),
-        (status = 422, description = "Validation error"),
     ),
     tag = "setup"
 )]
@@ -79,10 +62,7 @@ pub async fn create_admin(
         return Err(AppError::AdminAlreadyConfigured);
     }
 
-    let user = deps
-        .user_service
-        .create_user(request.to_admin_user())
-        .await?;
+    let user = deps.user_service.create_user(request.into()).await?;
 
     let user_id = user.id.unwrap();
     let session_token = deps.session_service.create_session(user_id).await?;

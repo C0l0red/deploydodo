@@ -25,7 +25,6 @@ pub struct LoginResponse {
     request_body = LoginRequest,
     responses(
         (status = 200, description = "Login successful", body = LoginResponse),
-        (status = 401, description = "Invalid credentials"),
     ),
     tag = "auth"
 )]

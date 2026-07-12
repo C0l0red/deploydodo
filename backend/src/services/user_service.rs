@@ -1,13 +1,16 @@
 use std::sync::Arc;
 
 use argon2::{password_hash::SaltString, Argon2, PasswordHasher, PasswordVerifier};
-use chrono::DateTime;
+use chrono::{DateTime, Utc};
 use rand_core::OsRng;
 use serde::Serialize;
 use sqlx::{FromRow, PgPool, Type};
 use utoipa::ToSchema;
 
-use crate::error::{AppError, AppResult};
+use crate::{
+    error::{AppError, AppResult},
+    routes::create_admin::CreateAdminRequest,
+};
 
 pub struct UserService {
     db: Arc<PgPool>,
@@ -26,7 +29,7 @@ pub struct User {
     pub id: Option<i64>,
     pub name: String,
     pub email: String,
-    pub password_hash: String,
+    password_hash: String,
     pub account_type: AccountType,
     pub created_at: DateTime<chrono::Utc>,
 }
@@ -44,6 +47,19 @@ impl User {
         self.id.ok_or(AppError::InternalServerError(
             "id is None in User type".to_string(),
         ))
+    }
+}
+
+impl From<CreateAdminRequest> for User {
+    fn from(value: CreateAdminRequest) -> Self {
+        User {
+            id: None,
+            name: value.name,
+            email: value.email,
+            password_hash: value.password,
+            account_type: AccountType::Admin,
+            created_at: Utc::now(),
+        }
     }
 }
 

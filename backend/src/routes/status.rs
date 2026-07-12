@@ -19,6 +19,9 @@ pub struct StatusResponse {
 #[utoipa::path(
     get,
     path = "/api/status",
+    params(
+        ("Authorization" = String, Header, description = "authorization token")
+    ),
     responses(
         (status = 200, description = "Config status", body = StatusResponse),
     ),
