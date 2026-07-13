@@ -1,12 +1,18 @@
 import { useState } from 'react'
-import { useNavigate } from '@tanstack/react-router'
+import { createLazyRoute, useNavigate } from '@tanstack/react-router'
 import { Logo } from '@/components/Logo'
 import { ChoosePassword } from './ChoosePassword'
 import { CreateAdminAccount } from './CreateAdminAccount'
+import { Pending } from '../Pending/Pending'
 
 type Step = 'create-account' | 'choose-password'
 
-export function Onboarding() {
+export const OnboardingRoute = createLazyRoute('onboarding')({
+  pendingComponent: Pending,
+  component: Onboarding,
+})
+
+function Onboarding() {
   const [step, setStep] = useState<Step>('create-account')
   const [accountInfo, setAccountInfo] = useState({ name: '', email: '' })
   const navigate = useNavigate()

@@ -1,85 +1,61 @@
 import { createRoute } from '@tanstack/react-router'
 import { requireAuth, rootRoute } from '@/routeConfig'
-import { DashboardLayout } from './DashboardLayout'
-import { DashboardIndex } from './DashboardIndex'
-import { Projects } from './Projects'
-import { Servers } from './Servers'
-import { ServerDetail } from './Servers/Detail'
-import { Sources } from './Sources'
-import { Destinations } from './Destinations'
-import { SharedVariables } from './SharedVariables'
-import { Keys } from './Keys'
-import { Terminal } from './Terminal'
-import { Settings } from './Settings'
-import { Pending } from '@/pages/Pending/Pending'
 
 const dashboardParentRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/dashboard',
   beforeLoad: requireAuth,
-  pendingComponent: Pending,
-  component: DashboardLayout,
-})
+}).lazy(() => import('./DashboardLayout').then((page) => page.DashboardLayoutRoute))
 
 const dashboardIndexRoute = createRoute({
   getParentRoute: () => dashboardParentRoute,
   path: '/',
-  component: DashboardIndex,
-})
+}).lazy(() => import('./DashboardIndex').then((page) => page.DashboardRoute))
 
 const projectsRoute = createRoute({
   getParentRoute: () => dashboardParentRoute,
   path: '/projects',
-  component: Projects,
-})
+}).lazy(() => import('./Projects').then((page) => page.ProjectsRoute))
 
 const serversRoute = createRoute({
   getParentRoute: () => dashboardParentRoute,
   path: '/servers',
-  component: Servers,
-})
+}).lazy(() => import('./Servers').then((page) => page.ServersRoute))
 
 const serverDetailRoute = createRoute({
   getParentRoute: () => dashboardParentRoute,
   path: '/servers/$serverId',
-  component: ServerDetail,
-})
+}).lazy(() => import('./Servers/Detail').then((page) => page.ServerDetailRoute))
 
 const sourcesRoute = createRoute({
   getParentRoute: () => dashboardParentRoute,
   path: '/sources',
-  component: Sources,
-})
+}).lazy(() => import('./Sources').then((page) => page.SourcesRoute))
 
 const destinationsRoute = createRoute({
   getParentRoute: () => dashboardParentRoute,
   path: '/destinations',
-  component: Destinations,
-})
+}).lazy(() => import('./Destinations').then((page) => page.DestinationsRoute))
 
 const sharedVariablesRoute = createRoute({
   getParentRoute: () => dashboardParentRoute,
   path: '/shared-variables',
-  component: SharedVariables,
-})
+}).lazy(() => import('./SharedVariables').then((page) => page.SharedVariablesRoute))
 
 const keysRoute = createRoute({
   getParentRoute: () => dashboardParentRoute,
   path: '/keys',
-  component: Keys,
-})
+}).lazy(() => import('./Keys').then((page) => page.KeysRoute))
 
 const terminalRoute = createRoute({
   getParentRoute: () => dashboardParentRoute,
   path: '/terminal',
-  component: Terminal,
-})
+}).lazy(() => import('./Terminal').then((page) => page.TerminalRoute))
 
 const settingsRoute = createRoute({
   getParentRoute: () => dashboardParentRoute,
   path: '/settings',
-  component: Settings,
-})
+}).lazy(() => import('./Settings').then((page) => page.SettingsRoute))
 
 export const dashboardRoute = dashboardParentRoute.addChildren([
   dashboardIndexRoute,

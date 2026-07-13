@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useParams } from '@tanstack/react-router'
+import { createLazyRoute, Link, useParams } from '@tanstack/react-router'
 import { motion } from 'framer-motion'
 import { cn } from '@/utilities/cn'
 import { OutlineButton } from './Components'
@@ -9,6 +9,10 @@ import { ProxyTab } from './Components/DetailTabs/ProxyTab'
 import { ResourcesTab } from './Components/DetailTabs/ResourcesTab'
 import { TerminalTab } from './Components/DetailTabs/TerminalTab'
 import { SecurityTab } from './Components/DetailTabs/SecurityTab'
+
+export const ServerDetailRoute = createLazyRoute('server-detail')({
+  component: ServerDetail,
+})
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Tab = 'Configuration' | 'Proxy' | 'Resources' | 'Terminal' | 'Security'

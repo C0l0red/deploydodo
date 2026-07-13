@@ -12,7 +12,7 @@ const indexRoute = createRoute({
   beforeLoad: () => redirect({ to: '/onboarding' }),
 })
 
-async function buildRouteTree() {
+function buildRouteTree() {
   return rootRoute.addChildren([
     indexRoute,
     onboardingRoute,
@@ -24,7 +24,7 @@ async function buildRouteTree() {
 }
 
 
-export async function createAppRouter() { return createRouter({ routeTree: await buildRouteTree() })}
+export function createAppRouter() { return createRouter({ routeTree: buildRouteTree() })}
 
 // declare module '@tanstack/react-router' {
 //   interface Register {

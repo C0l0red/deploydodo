@@ -4,8 +4,13 @@ import { PlusIcon } from '@/assets/icons'
 import { StaggerContainer, StaggerItem, staggerItemVariants } from '@/components/Animated'
 import { useServersQuery } from '@/api/queries'
 import { ServerCard, AddServerModal } from './Components'
+import { createLazyRoute } from '@tanstack/react-router'
 
-export function Servers() {
+export const ServersRoute = createLazyRoute('servers')({
+  component: Servers,
+})
+
+function Servers() {
   const [modalOpen, setModalOpen] = useState(false)
   const { data: servers, isLoading, isError, error, refetch } = useServersQuery()
 

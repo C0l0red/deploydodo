@@ -1,8 +1,13 @@
 import { motion } from 'framer-motion'
 import { PlusIcon } from '@/assets/icons'
 import { StaggerContainer, StaggerItem, staggerItemVariants } from '@/components/Animated'
+import { createLazyRoute } from '@tanstack/react-router'
 
-export function DashboardIndex() {
+export const DashboardRoute = createLazyRoute('dashboard-index')({
+  component: DashboardIndex,
+})
+
+function DashboardIndex() {
   return (
     <StaggerContainer className="flex items-end justify-between">
       <StaggerItem className="flex flex-col gap-2">

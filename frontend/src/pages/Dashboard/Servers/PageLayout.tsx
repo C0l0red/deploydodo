@@ -1,7 +1,7 @@
 export function PageLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="w-full min-h-screen bg-linear-to-b from-[rgba(255,122,73,0.01)] to-[rgba(252,140,99,0.12)] flex items-center justify-center py-[120px] px-4">
-      <div className="flex flex-col items-center gap-5 w-full max-w-[904px]">{children}</div>
+      <div className="flex flex-col items-center gap-5 w-full max-w-226">{children}</div>
     </div>
   )
 }

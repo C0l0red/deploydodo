@@ -1,7 +1,8 @@
-import { useNavigate } from '@tanstack/react-router'
+import { createLazyRoute, useNavigate } from '@tanstack/react-router'
 import { welcomeRoute } from '@/pages/Welcome/route'
 import { LogoIcon } from '@/assets/icons'
 import { Button } from '@/components/Button'
+import { Pending } from '../Pending/Pending'
 
 function CheckCircleIcon() {
   return (
@@ -46,7 +47,12 @@ const itemRoutes: Record<ItemTitle, string> = {
   'First Project': '/dashboard',
 }
 
-export function Welcome() {
+export const WelcomeRoute = createLazyRoute("welcome")({
+  component: Welcome,
+  pendingComponent: Pending,
+})
+
+function Welcome() {
   const navigate = useNavigate()
   const status = welcomeRoute.useLoaderData()
 
@@ -81,15 +87,15 @@ export function Welcome() {
           Welcome to DeployDodo
         </h1>
 
-        <div className="bg-background rounded-xl shadow-[0px_8px_24px_0px_rgba(0,0,0,0.08),0px_0px_1px_0px_rgba(0,0,0,0.2)] w-[484px] max-w-full p-8">
+        <div className="bg-background rounded-xl shadow-[0px_8px_24px_0px_rgba(0,0,0,0.08),0px_0px_1px_0px_rgba(0,0,0,0.2)] w-121 max-w-full p-8">
           <div className="flex flex-col gap-6">
             <h2 className="font-sans font-semibold text-2xl leading-8 text-high-contrast m-0">
               What You'll Set Up
             </h2>
 
             <div className="relative">
-              <div className="absolute left-[15px] top-[16px] bottom-[16px] w-px bg-neutral-300" />
-              <div className="flex flex-col gap-[25px] relative">
+              <div className="absolute left-3.75 top-4 bottom-4 w-px bg-neutral-300" />
+              <div className="flex flex-col gap-6.25 relative">
                 {items.map((item, index) => {
                   const firstIncomplete = items.findIndex((i) => !i.done)
                   return (

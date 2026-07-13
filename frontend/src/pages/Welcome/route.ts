@@ -1,7 +1,6 @@
 import { createRoute, redirect } from '@tanstack/react-router'
 import { requireAuth, rootRoute } from '@/routeConfig'
-import { Welcome } from '@/pages/Welcome/Welcome'
-import { Pending } from '@/pages/Pending/Pending'
+import { statusQuery } from '@/api/queries'
 
 export const welcomeRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -10,12 +9,5 @@ export const welcomeRoute = createRoute({
     const { status } = await requireAuth()
     if (status.isServerSetup) throw redirect({ to: '/dashboard' })
   },
-  loader: async () => {
-    const { queryClient } = await import('@/api/client')
-    const { statusQueryOptions } = await import('@/api/queries')
-
-    return await queryClient.ensureQueryData(statusQueryOptions)
-  },
-  pendingComponent: Pending,
-  component: Welcome,
-})
+  loader: statusQuery,
+}).lazy(() => import('@/pages/Welcome/Welcome').then((page) => page.WelcomeRoute))

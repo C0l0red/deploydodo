@@ -1,23 +1,17 @@
 import { createRoute, redirect } from '@tanstack/react-router'
 import { rootRoute } from '@/routeConfig'
-import { Login } from './Login'
+import { statusQuery } from '@/api/queries'
 
 export const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/login',
   beforeLoad: async () => {
-    const { queryClient } = await import('@/api/client')
-    const { statusQueryOptions } = await import('@/api/queries')
+    const { statusQuery } = await import('@/api/queries')
 
-    const status = await queryClient.ensureQueryData(statusQueryOptions)
+    const status = await statusQuery()
     if (!status.isAdminOnboarded) {
       throw redirect({ to: '/onboarding' })
     }
   },
-  loader: async () => {
-    const { queryClient } = await import('@/api/client')
-    const { statusQueryOptions } = await import('@/api/queries')
-    return queryClient.ensureQueryData(statusQueryOptions)
-  },
-  component: Login,
-})
+  loader: statusQuery,
+}).lazy(() => import('./Login').then((page) => page.LoginRoute))

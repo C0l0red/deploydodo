@@ -5,7 +5,7 @@ export const queryClient = new QueryClient()
 
 function createApiClient() {
   return new Api({
-    baseUrl: '/',
+    baseUrl: window.origin,
     customFetch: function (input, init) {
       const token = getAuthToken()
       const headers: Record<string, string> = token ? { Authorization: token } : {}
@@ -21,14 +21,16 @@ function createApiClient() {
   })
 }
 
-export function handleQuery<T>(fn: () => Promise<HttpResponse<T, HttpError>>) {
+/* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+export function handleQuery<T>(fn: () => Promise<HttpResponse<T>>) {
   return async function exec(): Promise<T> {
-    const response = await fn()
-
-    if (response.error) {
-      throw { ...response.error, status: response.status }
-    }
-    return response.data
+    return fn()
+      .then((response) => response.data)
+      .catch((response) => {
+        const err = new HttpError(response.error.message, response.status)
+        console.error(err.toString())
+        throw err
+      })
   }
 }
 
@@ -41,9 +43,17 @@ export async function handleMutation<T>(fn: () => Promise<HttpResponse<T, HttpEr
   return response.data
 }
 
-export interface HttpError {
-  message: string
+export class HttpError extends Error {
   status: number
+
+  constructor(message: string, status: number, options?: ErrorOptions) {
+    super(message, options)
+    this.status = status
+  }
+}
+
+HttpError.prototype.toString = function () {
+  return `HttpError { message=${this.message}, status=${this.status} }`
 }
 
 export const { api } = createApiClient()

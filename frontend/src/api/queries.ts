@@ -1,25 +1,31 @@
 import { queryOptions, useQuery } from '@tanstack/react-query'
-import { api, handleQuery } from '@/api/client'
+import { api, handleQuery, queryClient } from '@/api/client'
 
-export const statusQueryOptions = queryOptions({
+const statusQueryOptions = queryOptions({
   queryKey: ['status'],
   queryFn: handleQuery(api.status),
 })
+
+export const statusQuery = () => queryClient.ensureQueryData(statusQueryOptions)
 
 export function useStatusQuery() {
   return useQuery(statusQueryOptions)
 }
 
-export const serversQueryOptions = queryOptions({
+const serversQueryOptions = queryOptions({
   queryKey: ['servers'],
   queryFn: handleQuery(api.listServers),
 })
+
+export const serversQuery = () => queryClient.ensureQueryData(serversQueryOptions)
 
 export function useServersQuery() {
   return useQuery(serversQueryOptions)
 }
 
-export const validateSessionOptions = queryOptions({
+const validateSessionOptions = queryOptions({
   queryKey: ['validateSession'],
   queryFn: handleQuery(api.validateSession),
 })
+
+export const validateSessionQuery = () => queryClient.ensureQueryData(validateSessionOptions)

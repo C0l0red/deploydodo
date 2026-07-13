@@ -1,22 +1,26 @@
 import { useState } from 'react'
-import { useNavigate } from '@tanstack/react-router'
+import { createLazyRoute, useNavigate } from '@tanstack/react-router'
 import { useFormik } from 'formik'
 import * as Yup from 'yup'
 import { TextInput } from '@/components/TextInput'
 import { Button } from '@/components/Button'
 import { LogoIcon, EyeOpenIcon, EyeClosedIcon } from '@/assets/icons'
 import { useToast } from '@/components/Toast'
-import { queryClient, setAuthToken } from '@/api/client'
-import { serversQueryOptions } from '@/api/queries'
+import { setAuthToken } from '@/api/client'
+import { serversQuery } from '@/api/queries'
 import { useLogin } from '@/api/mutations'
 
-export function Login() {
+export const LoginRoute = createLazyRoute('login')({
+  component: Login,
+})
+
+function Login() {
   const login = useLogin({
     onSuccess: async (data) => {
       setAuthToken(data.sessionToken)
       toast('Welcome back', 'success')
 
-      const servers = await queryClient.ensureQueryData(serversQueryOptions)
+      const servers = await serversQuery()
       navigate({ to: servers.length > 0 ? '/dashboard' : '/welcome', replace: true })
     },
     onError: () => {
