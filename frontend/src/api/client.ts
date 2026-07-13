@@ -21,7 +21,6 @@ function createApiClient() {
   })
 }
 
-/* eslint-disable-next-line @typescript-eslint/no-explicit-any */
 export function handleQuery<T>(fn: () => Promise<HttpResponse<T>>) {
   return async function exec(): Promise<T> {
     return fn()
