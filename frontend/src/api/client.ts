@@ -34,7 +34,9 @@ export function handleQuery<T>(fn: () => Promise<HttpResponse<T>>) {
   }
 }
 
-export async function handleMutation<T>(fn: () => Promise<HttpResponse<T, HttpError>>) {
+export async function handleMutation<T>(
+  fn: () => Promise<HttpResponse<T, HttpError>>,
+) {
   const response = await fn()
 
   if (response.error) {

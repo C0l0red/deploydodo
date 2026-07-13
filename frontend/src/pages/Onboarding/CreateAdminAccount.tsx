@@ -16,7 +16,7 @@ export function CreateAdminAccount({ onProceed }: CreateAdminAccountProps) {
   const formik = useFormik({
     initialValues: { name: '', email: '' },
     validationSchema: schema,
-    onSubmit: (values) => {
+    onSubmit: async (values) => {
       onProceed(values.name.trim(), values.email.trim())
     },
   })

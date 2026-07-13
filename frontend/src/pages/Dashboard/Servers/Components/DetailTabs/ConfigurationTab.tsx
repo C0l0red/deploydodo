@@ -119,7 +119,7 @@ export function ConfigurationTab() {
                         value={generalForm.values.wildcardDomain} onChange={generalForm.handleChange} onBlur={generalForm.handleBlur} />
                     </div>
                     <div className="flex gap-4">
-                      <div className="flex-[3]">
+                      <div className="flex-3">
                         <TextInput label="Host URL" name="hostUrl"
                           type={showHostUrl ? 'text' : 'password'}
                           value={generalForm.values.hostUrl} onChange={generalForm.handleChange} onBlur={generalForm.handleBlur}
@@ -314,7 +314,7 @@ export function ConfigurationTab() {
                 </div>
               </div>
 
-              <div className="flex flex-col gap-3 w-[28rem] max-w-full">
+              <div className="flex flex-col gap-3 w-md max-w-full">
                 {keys.map((key) => (
                   <div key={key.id} className="border border-neutral-100 rounded-xl p-5 flex flex-col gap-3 bg-white">
                     <div className="flex items-start justify-between">
@@ -333,7 +333,7 @@ export function ConfigurationTab() {
                           </svg>
                         </button>
                         {key.menuOpen && (
-                          <div className="absolute right-0 top-7 bg-white border border-neutral-100 rounded-lg shadow-md py-1 z-10 min-w-[130px]">
+                          <div className="absolute right-0 top-7 bg-white border border-neutral-100 rounded-lg shadow-md py-1 z-10 min-w-32.5">
                             <button type="button" onClick={() => setKeys(keys.map((k) => ({ ...k, menuOpen: false })))}
                               className="w-full text-left px-3 py-1.5 font-manrope text-sm text-high-contrast hover:bg-neutral-100">Edit</button>
                             <button type="button"

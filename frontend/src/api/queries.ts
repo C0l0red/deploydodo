@@ -8,6 +8,13 @@ const statusQueryOptions = queryOptions({
 
 export const statusQuery = () => queryClient.ensureQueryData(statusQueryOptions)
 
+export const invalidateStatusQuery = () =>
+  queryClient.invalidateQueries({
+    queryKey: statusQueryOptions.queryKey,
+    exact: true,
+    refetchType: 'all',
+  })
+
 export function useStatusQuery() {
   return useQuery(statusQueryOptions)
 }

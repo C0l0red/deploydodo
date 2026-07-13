@@ -7,6 +7,7 @@ import { useToast } from '@/components/Toast'
 import { useCreateAdmin } from '@/api/mutations'
 import { EyeOpenIcon, EyeClosedIcon } from '@/assets/icons'
 import { setAuthToken } from '@/api/client'
+import { invalidateStatusQuery } from '@/api/queries'
 
 const RULES = [
   { label: 'At least 8 characters', test: (p: string) => p.length >= 8 },
@@ -79,9 +80,10 @@ export function ChoosePassword({ name, email, onBack, onCreateAccount }: ChooseP
   const { toast } = useToast()
 
   const createAdmin = useCreateAdmin({
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       setAuthToken(data.sessionToken)
       toast('Account created successfully', 'success')
+      await invalidateStatusQuery()
       onCreateAccount()
     },
   })

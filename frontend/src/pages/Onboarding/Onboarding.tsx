@@ -29,7 +29,11 @@ function Onboarding() {
           name={accountInfo.name}
           email={accountInfo.email}
           onBack={() => setStep('create-account')}
-          onCreateAccount={() => navigate({ to: '/welcome' })}
+          onCreateAccount={() => {
+            navigate({
+              to: '/welcome',
+            })
+          }}
         />
       )
     }

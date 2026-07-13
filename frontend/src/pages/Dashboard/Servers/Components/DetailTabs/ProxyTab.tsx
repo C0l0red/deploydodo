@@ -84,7 +84,7 @@ export function ProxyTab() {
                     '      - "host.docker.internal:host-gateway"',
                     '    networks:',
                   ].map((line, i) => (
-                    <div key={i} className="flex leading-6 py-0.5 min-h-[24px]">
+                    <div key={i} className="flex leading-6 py-0.5 min-h-6">
                       <span className="w-10 shrink-0 text-right pr-4 text-text-secondary/40 select-none font-mono text-sm">{i + 1}</span>
                       <span className="flex-1 font-mono text-sm text-high-contrast whitespace-pre select-text">{line}</span>
                     </div>
