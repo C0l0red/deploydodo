@@ -45,7 +45,13 @@ command = "sqlx"
 args = ["migrate", "add", "-t", "-r", "${@}"]
 cwd = "backend"
 
-[tasks.undo-migration]
+[tasks.migrate]
+description = "Run database migrations"
+command = "sqlx"
+args = ["migrate", "run"]
+cwd = "backend"
+
+[tasks.undo-migrate]
 description = "Revert the last database migration"
 command = "sqlx"
 args = ["migrate", "revert"]

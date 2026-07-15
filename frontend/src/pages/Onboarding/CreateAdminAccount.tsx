@@ -22,7 +22,7 @@ export function CreateAdminAccount({ onProceed }: CreateAdminAccountProps) {
   })
 
   return (
-    <div className="bg-background rounded-xl shadow-[0px_8px_24px_0px_rgba(0,0,0,0.08),0px_0px_1px_0px_rgba(0,0,0,0.2)] w-[456px] max-w-full px-6 pt-4 pb-2.5">
+    <div className="bg-background rounded-xl shadow-[0px_8px_24px_0px_rgba(0,0,0,0.08),0px_0px_1px_0px_rgba(0,0,0,0.2)] w-114 max-w-full px-6 pt-4 pb-2.5">
       <div className="flex flex-col gap-6">
         <h1 className="font-sans font-semibold text-2xl leading-8 text-secondary m-0">
           Create admin account

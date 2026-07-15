@@ -18,4 +18,5 @@ pub mod types {
     pub use super::ssh_service::AuthType;
     pub use super::user_service::AccountType;
     pub use super::user_service::User;
+    pub use super::variables_service::{VariableKey, VariableValueByKey};
 }

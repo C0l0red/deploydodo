@@ -9,6 +9,7 @@ import { cn } from '@/utilities/cn'
 import { useJobEvents } from '@/hooks/useJobEvents'
 import type { ConnectingStep } from '@/api/types'
 import { SpinnerIcon, CheckCircleIcon, WarningCircleIcon } from '@/assets/icons'
+import { invalidateServersQuery, invalidateStatusQuery } from '@/api/queries'
 
 type FormValues = {
   serverType: 'local' | 'remote'
@@ -66,8 +67,16 @@ export function AddServerModal({ open, onClose, onSuccess }: AddServerModalProps
   const [error, setError] = useState<string | null>(null)
   const [jobId, setJobId] = useState<string | null>(null)
 
+  function refreshQueries() {
+    return Promise.all([
+      invalidateStatusQuery(),
+      invalidateServersQuery()
+    ])
+  }
+
   const createLocal = useCreateLocalServer({
-    onSuccess: () => {
+    onSuccess: async () => {
+      await refreshQueries()
       onSuccess()
       onClose()
     },
@@ -76,7 +85,8 @@ export function AddServerModal({ open, onClose, onSuccess }: AddServerModalProps
     },
   })
   const createRemote = useCreateRemoteServer({
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
+      await refreshQueries()
       setJobId(data.jobId)
     },
     onError: (e) => setError(e.message),

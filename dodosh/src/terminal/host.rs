@@ -15,11 +15,12 @@ pub async fn connect_host(
     size: TermSize,
     timeout_config: SshTimeout,
 ) -> Result<terminal::Terminal, ShellError> {
-    let session = SshSession::connect(hostname, port, username, auth, timeout_config).await?;
+    let session =
+        SshSession::connect(hostname, port, username, auth, timeout_config.clone()).await?;
 
     let channel = session.open_channel().await?;
 
-    let request_timeout = Duration::from_secs(10);
+    let request_timeout = Duration::from_secs(timeout_config.connect_timeout_secs);
 
     time::timeout(
         request_timeout,

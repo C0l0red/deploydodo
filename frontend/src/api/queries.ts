@@ -24,6 +24,13 @@ const serversQueryOptions = queryOptions({
   queryFn: handleQuery(api.listServers),
 })
 
+export const invalidateServersQuery = () =>
+  queryClient.invalidateQueries({
+    queryKey: serversQueryOptions.queryKey,
+    exact: true,
+    refetchType: 'all',
+  })
+
 export const serversQuery = () => queryClient.ensureQueryData(serversQueryOptions)
 
 export function useServersQuery() {

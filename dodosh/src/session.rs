@@ -25,31 +25,25 @@ pub struct SshSession {
     handle: Arc<client::Handle<Handler>>,
 }
 
+#[derive(Clone)]
 pub struct SshTimeout {
     inactivity_secs: Option<u64>,
     keepalive_secs: Option<u64>,
+    pub(crate) connect_timeout_secs: u64,
     keepalive_max: usize,
 }
 
 #[derive(Default)]
-struct SshTimeoutBuilder {
+pub struct SshTimeoutBuilder {
     inactivity_secs: Option<u64>,
     keepalive_secs: Option<u64>,
+    connect_timeout_secs: Option<u64>,
     keepalive_max: Option<usize>,
 }
 
 impl SshTimeout {
-    #[allow(private_interfaces)]
     pub fn builder() -> SshTimeoutBuilder {
         SshTimeoutBuilder::default()
-    }
-
-    pub fn none() -> Self {
-        Self::builder().build()
-    }
-
-    pub fn keepalive_secs(secs: u64) -> Self {
-        Self::builder().keepalive_secs(secs).build()
     }
 
     pub fn inactivity_secs(secs: u64) -> Self {
@@ -58,13 +52,18 @@ impl SshTimeout {
 }
 
 impl SshTimeoutBuilder {
-    pub fn inactivity_secs(&mut self, secs: u64) -> &Self {
+    pub fn inactivity_secs(&mut self, secs: u64) -> &mut Self {
         self.inactivity_secs = Some(secs);
         self
     }
 
-    pub fn keepalive_secs(&mut self, secs: u64) -> &Self {
+    pub fn keepalive_secs(&mut self, secs: u64) -> &mut Self {
         self.keepalive_secs = Some(secs);
+        self
+    }
+
+    pub fn connect_timeout_secs(&mut self, secs: u64) -> &mut Self {
+        self.connect_timeout_secs = Some(secs);
         self
     }
 
@@ -72,6 +71,7 @@ impl SshTimeoutBuilder {
         SshTimeout {
             inactivity_secs: self.inactivity_secs,
             keepalive_secs: self.keepalive_secs,
+            connect_timeout_secs: self.connect_timeout_secs.unwrap_or(10),
             keepalive_max: self.keepalive_max.unwrap_or(5),
         }
     }
@@ -187,7 +187,7 @@ async fn session_init(
         inactivity_timeout: timeout_config.inactivity_secs.map(Duration::from_secs),
         keepalive_interval: timeout_config.keepalive_secs.map(Duration::from_secs),
         keepalive_max: timeout_config.keepalive_max,
-        ..<_>::default()
+        ..Default::default()
     });
 
     let mut handle = client::connect(config, (hostname, port), Handler).await?;

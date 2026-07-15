@@ -1,3 +1,4 @@
+use dodosh::terminal::TermSize;
 use dodosh::{terminal, SshTimeout};
 
 use crate::dependencies::Dependencies;
@@ -13,13 +14,44 @@ pub async fn terminal_init(
 
     let ssh_key = deps.ssh_service.get_key_for_server(&server).await?;
 
-    Ok(terminal::connect_host(
-        server.hostname().as_ref(),
-        server.ssh_port(),
-        ssh_key.username(),
-        (&ssh_key).into(),
-        params.into(),
-        SshTimeout::keepalive_secs(30),
-    )
-    .await?)
+    let timeout_config = SshTimeout::builder()
+        .inactivity_secs(60)
+        .keepalive_secs(30)
+        .build();
+
+    if let TerminalParams {
+        cols,
+        rows,
+        container_name: Some(ref container_name),
+    } = params
+    {
+        let server_type = server.server_type();
+
+        let params = TermSize::dims(cols, rows);
+
+        if server_type.is_local() {
+            Ok(terminal::connect_docker_local(container_name, params, timeout_config).await?)
+        } else {
+            Ok(terminal::connect_docker_remote(
+                server.hostname().as_ref(),
+                server.ssh_port(),
+                ssh_key.username(),
+                (&ssh_key).into(),
+                container_name,
+                params,
+                timeout_config,
+            )
+            .await?)
+        }
+    } else {
+        Ok(terminal::connect_host(
+            server.hostname().as_ref(),
+            server.ssh_port(),
+            ssh_key.username(),
+            (&ssh_key).into(),
+            params.into(),
+            timeout_config,
+        )
+        .await?)
+    }
 }

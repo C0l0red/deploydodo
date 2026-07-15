@@ -5,6 +5,7 @@ import { useToast } from '@/components/Toast'
 import { useCreateLocalServer } from '@/api/mutations'
 import type { CreateLocalServerResponse } from '@/api/Api'
 import { Card } from '@/pages/Dashboard/Servers/PageLayout'
+import { invalidateStatusQuery } from '@/api/queries'
 
 function FormField({
   label,
@@ -88,8 +89,9 @@ export function LocalServerView({
   const { toast } = useToast()
 
   const createLocal = useCreateLocalServer({
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       toast('Local server configured', 'success')
+      await invalidateStatusQuery()
       onSuccess(data)
     },
     onError: (error) => {

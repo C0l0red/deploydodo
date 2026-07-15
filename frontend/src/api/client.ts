@@ -36,12 +36,13 @@ export function handleQuery<T>(fn: () => Promise<HttpResponse<T>>) {
 export async function handleMutation<T>(
   fn: () => Promise<HttpResponse<T, HttpError>>,
 ) {
-  const response = await fn()
-
-  if (response.error) {
-    throw { ...response.error, status: response.status }
-  }
-  return response.data
+  return fn()
+    .then((response) => response.data)
+    .catch((response) => {
+      const err = new HttpError(response.error.message, response.status)
+      console.error(err.toString())
+      throw err
+    })
 }
 
 export class HttpError extends Error {

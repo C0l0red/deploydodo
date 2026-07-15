@@ -5,7 +5,7 @@ use utoipa::ToSchema;
 use crate::dependencies::Dependencies;
 use crate::error::{AppError, AppResult};
 use crate::extractors::Auth;
-use crate::services::types;
+use crate::services::types::{self, VariableKey};
 
 #[derive(Deserialize, ToSchema)]
 pub struct CreateLocalServerRequest {
@@ -63,6 +63,14 @@ pub async fn create_local_server(
         .await?;
 
     tracing::info!(id = %server.id(), "local server created");
+
+    deps.variables_service
+        .set_value(VariableKey::IsLocalServerSetup, true)
+        .await?;
+
+    deps.variables_service
+        .set_value(VariableKey::IsServerSetup, true)
+        .await?;
 
     Ok((
         StatusCode::CREATED,

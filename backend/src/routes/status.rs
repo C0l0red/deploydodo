@@ -2,7 +2,11 @@ use axum::{extract::State, Json};
 use serde::Serialize;
 use utoipa::ToSchema;
 
-use crate::{dependencies::Dependencies, error::AppResult};
+use crate::{
+    dependencies::Dependencies,
+    error::AppResult,
+    services::types::{VariableKey, VariableValueByKey},
+};
 
 #[derive(Serialize, ToSchema)]
 pub struct StatusResponse {
@@ -14,6 +18,8 @@ pub struct StatusResponse {
     pub is_project_setup: bool,
     #[serde(rename = "isOnboardingComplete")]
     pub is_onboarding_complete: bool,
+    #[serde(rename = "isLocalServerSetup")]
+    pub is_local_server_setup: bool,
 }
 
 #[utoipa::path(
@@ -28,28 +34,33 @@ pub struct StatusResponse {
     tag = "status"
 )]
 pub async fn status(State(deps): State<Dependencies>) -> AppResult<Json<StatusResponse>> {
-    let is_admin_onboarded = deps
-        .variables_service
-        .get("is_admin_onboarded")
-        .await?
-        .is_some_and(|v| v == "true");
+    let variable_keys = vec![
+        VariableKey::IsAdminOnboarded,
+        VariableKey::IsServerSetup,
+        VariableKey::IsLocalServerSetup,
+        VariableKey::IsProjectSetup,
+    ];
 
-    let is_server_setup = deps
-        .variables_service
-        .get("is_server_setup")
-        .await?
-        .is_some_and(|v| v == "true");
+    let variables = deps.variables_service.get_all(variable_keys).await?;
 
-    let is_project_setup = deps
-        .variables_service
-        .get("is_project_setup")
-        .await?
-        .is_some_and(|v| v == "true");
+    let is_admin_onboarded = variables
+        .get_boolean(VariableKey::IsAdminOnboarded)
+        .unwrap_or(false);
+    let is_server_setup = variables
+        .get_boolean(VariableKey::IsServerSetup)
+        .unwrap_or(false);
+    let is_project_setup = variables
+        .get_boolean(VariableKey::IsProjectSetup)
+        .unwrap_or(false);
+    let is_local_server_setup = variables
+        .get_boolean(VariableKey::IsLocalServerSetup)
+        .unwrap_or(false);
 
     Ok(Json(StatusResponse {
         is_admin_onboarded,
         is_server_setup,
         is_project_setup,
+        is_local_server_setup,
         is_onboarding_complete: is_admin_onboarded && is_server_setup && is_project_setup,
     }))
 }
