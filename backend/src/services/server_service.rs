@@ -1,4 +1,4 @@
-use std::{sync::Arc, u16};
+use std::sync::Arc;
 
 use chrono::Utc;
 use serde::{Deserialize, Serialize};

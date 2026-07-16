@@ -98,10 +98,9 @@ mod tests {
 
     #[sqlx::test]
     fn create_admin_fails_if_name_is_missing(db: Pool<Postgres>) {
-        let app = App::register_create_admin(db).await;
+        let app = App::register_route(db, post(create_admin)).await;
 
-        app.server
-            .post("/api/setup/admin")
+        app.post()
             .json(&json!({}))
             .await
             .assert_status_unprocessable_entity()
@@ -110,10 +109,9 @@ mod tests {
 
     #[sqlx::test]
     fn create_admin_fails_if_email_is_missing(db: Pool<Postgres>) {
-        let app = App::register_create_admin(db).await;
+        let app = App::register_route(db, post(create_admin)).await;
 
-        app.server
-            .post("/api/setup/admin")
+        app.post()
             .json(&json!({"name": "Test user"}))
             .await
             .assert_status_unprocessable_entity()
@@ -122,10 +120,9 @@ mod tests {
 
     #[sqlx::test]
     fn create_admin_fails_if_password_is_missing(db: Pool<Postgres>) {
-        let app = App::register_create_admin(db).await;
+        let app = App::register_route(db, post(create_admin)).await;
 
-        app.server
-            .post("/api/setup/admin")
+        app.post()
             .json(&json!({"name": "Test user", "email": "test@user.com"}))
             .await
             .assert_status_unprocessable_entity()
@@ -134,10 +131,9 @@ mod tests {
 
     #[sqlx::test]
     fn create_admin_fails_if_name_is_blank(db: Pool<Postgres>) {
-        let app = App::register_create_admin(db).await;
+        let app = App::register_route(db, post(create_admin)).await;
 
-        app.server
-            .post("/api/setup/admin")
+        app.post()
             .json(&json!({"name": "", "email": "", "password": ""}))
             .await
             .assert_status_bad_request()
@@ -148,10 +144,9 @@ mod tests {
 
     #[sqlx::test]
     fn create_admin_fails_if_email_is_blank(db: Pool<Postgres>) {
-        let app = App::register_create_admin(db).await;
+        let app = App::register_route(db, post(create_admin)).await;
 
-        app.server
-            .post("/api/setup/admin")
+        app.post()
             .json(&json!({"name": "Test user", "email": "", "password": ""}))
             .await
             .assert_status_bad_request()
@@ -162,21 +157,14 @@ mod tests {
 
     #[sqlx::test]
     fn create_admin_fails_if_password_is_blank(db: Pool<Postgres>) {
-        let app = App::register_create_admin(db).await;
+        let app = App::register_route(db, post(create_admin)).await;
 
-        app.server
-            .post("/api/setup/admin")
+        app.post()
             .json(&json!({"name": "Test user", "email": "test@user.com", "password": ""}))
             .await
             .assert_status_bad_request()
             .assert_json_contains(&json!({
                 "message": "Password must be at least 8 characters"
             }));
-    }
-
-    impl App {
-        async fn register_create_admin(db: Pool<Postgres>) -> Self {
-            App::register_route(db, "/api/setup/admin", post(create_admin)).await
-        }
     }
 }

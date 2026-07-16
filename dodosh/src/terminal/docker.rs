@@ -13,11 +13,14 @@ use crate::{
     DockerTunnel, ShellError, SshAuth, SshSession, SshTimeout,
 };
 
+type DockerInput = Pin<Box<dyn AsyncWrite + Send>>;
+type DockerOutput = Pin<Box<dyn Stream<Item = Result<LogOutput, bollard::errors::Error>> + Send>>;
+
 pub struct DockerChannel {
     docker: bollard::Docker,
     exec_id: String,
-    input: Mutex<Pin<Box<dyn AsyncWrite + Send>>>,
-    output: Mutex<Pin<Box<dyn Stream<Item = Result<LogOutput, bollard::errors::Error>> + Send>>>,
+    input: Mutex<DockerInput>,
+    output: Mutex<DockerOutput>,
     _tunnel: Option<DockerTunnel>,
 }
 

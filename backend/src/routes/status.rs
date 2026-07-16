@@ -64,3 +64,44 @@ pub async fn status(State(deps): State<Dependencies>) -> AppResult<Json<StatusRe
         is_onboarding_complete: is_admin_onboarded && is_server_setup && is_project_setup,
     }))
 }
+
+#[cfg(test)]
+mod tests {
+    use axum::routing::get;
+    use serde_json::json;
+    use sqlx::{Pool, Postgres};
+
+    use super::status;
+    use crate::{services::types::VariableKey, test::App};
+
+    #[sqlx::test]
+    fn status_returns_false_for_all_variables(db: Pool<Postgres>) {
+        let app = App::register_route(db, get(status)).await;
+
+        app.get().await.assert_status_ok().assert_json(&json!({
+            "isAdminOnboarded": false,
+            "isServerSetup": false,
+            "isProjectSetup": false,
+            "isOnboardingComplete": false,
+            "isLocalServerSetup": false,
+        }));
+    }
+
+    #[sqlx::test]
+    fn status_returns_true_for_set_var(db: Pool<Postgres>) {
+        let app = App::register_route(db, get(status)).await;
+
+        let _ = app
+            .deps
+            .variables_service
+            .set_value(VariableKey::IsAdminOnboarded, true)
+            .await;
+
+        app.get()
+            .await
+            .assert_status_ok()
+            .assert_json_contains(&json!({
+                "isAdminOnboarded": true,
+            }));
+    }
+}

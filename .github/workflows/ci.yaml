@@ -61,7 +61,7 @@ jobs:
         run: cargo fmt --all -- --check
 
   cargo-clippy:
-    name: cargo fmt
+    name: cargo clippy
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -69,10 +69,11 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Check formatting
+      - name: Run Clippy
         run: cargo clippy
 
   build:
+    needs: [cargo-clippy, cargo-fix, cargo-fmt]
     name: cargo make build-debug
     runs-on: ubuntu-latest
     steps:
@@ -108,10 +109,10 @@ jobs:
       - name: Build
         run: cargo make build-debug
   test-backend:
+    needs: [cargo-clippy, cargo-fix, cargo-fmt]
     name: Test backend
     runs-on: ubuntu-latest
     env:
-      SQLX_OFFLINE: true
       DATABASE_URL: postgres://deploydodo:deploydodo@localhost:5432/deploydodo
       LOCAL_SSH_HOSTNAME: localhost
       LOCAL_SSH_PORT: 22
@@ -147,8 +148,22 @@ jobs:
             ~/.cargo/git/db/
             target/
           key: cargo-debug-${{ runner.os }}
+
+      - name: Install Binaries
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-make,sqlx-cli
+
+      - name: Run DB Migrations
+        run: cargo make migrate
+
+      - name: Check SQL query
+        run: cargo make check-query
+
       - name: Generate RSA
         run: ./configure_rsa.sh
 
       - name: Test
+        env:
+          SQLX_OFFLINE: true
         run: cargo test

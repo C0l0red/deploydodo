@@ -91,7 +91,7 @@ args = ["compose", "-f", "dev.docker-compose.yaml", "up", "-d"]
 
 [tasks.dev]
 description = "Run backend and frontend concurrently"
-dependencies = ["deploy-dev-db", "check-query"]
+dependencies = ["deploy-dev-db"]
 run_task = { name = ["backend", "frontend"], parallel = true }
 
 [tasks.build]
