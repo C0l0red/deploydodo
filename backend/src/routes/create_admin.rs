@@ -16,14 +16,14 @@ pub struct CreateAdminRequest {
 impl CreateAdminRequest {
     pub fn validate(&self) -> AppResult<()> {
         if self.name.trim().is_empty() {
-            return Err(AppError::Validation("Name is required".into()));
+            return Err(AppError::bad_request("Name is required"));
         }
         if self.email.trim().is_empty() {
-            return Err(AppError::Validation("Email is required".into()));
+            return Err(AppError::bad_request("Email is required"));
         }
         if self.password.len() < 8 {
-            return Err(AppError::Validation(
-                "Password must be at least 8 characters".into(),
+            return Err(AppError::bad_request(
+                "Password must be at least 8 characters",
             ));
         }
         Ok(())
@@ -84,4 +84,99 @@ pub async fn create_admin(
             session_token,
         }),
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use axum::routing::post;
+    use serde_json::json;
+    use sqlx::{Pool, Postgres};
+
+    use crate::test::App;
+
+    use super::create_admin;
+
+    #[sqlx::test]
+    fn create_admin_fails_if_name_is_missing(db: Pool<Postgres>) {
+        let app = App::register_create_admin(db).await;
+
+        app.server
+            .post("/api/setup/admin")
+            .json(&json!({}))
+            .await
+            .assert_status_unprocessable_entity()
+            .assert_text_contains("missing field `name`");
+    }
+
+    #[sqlx::test]
+    fn create_admin_fails_if_email_is_missing(db: Pool<Postgres>) {
+        let app = App::register_create_admin(db).await;
+
+        app.server
+            .post("/api/setup/admin")
+            .json(&json!({"name": "Test user"}))
+            .await
+            .assert_status_unprocessable_entity()
+            .assert_text_contains("missing field `email`");
+    }
+
+    #[sqlx::test]
+    fn create_admin_fails_if_password_is_missing(db: Pool<Postgres>) {
+        let app = App::register_create_admin(db).await;
+
+        app.server
+            .post("/api/setup/admin")
+            .json(&json!({"name": "Test user", "email": "test@user.com"}))
+            .await
+            .assert_status_unprocessable_entity()
+            .assert_text_contains("missing field `password`");
+    }
+
+    #[sqlx::test]
+    fn create_admin_fails_if_name_is_blank(db: Pool<Postgres>) {
+        let app = App::register_create_admin(db).await;
+
+        app.server
+            .post("/api/setup/admin")
+            .json(&json!({"name": "", "email": "", "password": ""}))
+            .await
+            .assert_status_bad_request()
+            .assert_json_contains(&json!({
+                "message": "Name is required"
+            }));
+    }
+
+    #[sqlx::test]
+    fn create_admin_fails_if_email_is_blank(db: Pool<Postgres>) {
+        let app = App::register_create_admin(db).await;
+
+        app.server
+            .post("/api/setup/admin")
+            .json(&json!({"name": "Test user", "email": "", "password": ""}))
+            .await
+            .assert_status_bad_request()
+            .assert_json_contains(&json!({
+                "message": "Email is required"
+            }));
+    }
+
+    #[sqlx::test]
+    fn create_admin_fails_if_password_is_blank(db: Pool<Postgres>) {
+        let app = App::register_create_admin(db).await;
+
+        app.server
+            .post("/api/setup/admin")
+            .json(&json!({"name": "Test user", "email": "test@user.com", "password": ""}))
+            .await
+            .assert_status_bad_request()
+            .assert_json_contains(&json!({
+                "message": "Password must be at least 8 characters"
+            }));
+    }
+
+    impl App {
+        async fn register_create_admin(db: Pool<Postgres>) -> Self {
+            App::register_route(db, "/api/setup/admin", post(create_admin)).await
+        }
+    }
 }

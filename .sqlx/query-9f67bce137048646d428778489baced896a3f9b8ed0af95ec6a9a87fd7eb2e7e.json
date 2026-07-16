@@ -1,0 +1,62 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, name, server_type AS \"server_type!: ServerType\", hostname, ssh_port, ssh_key_id FROM servers WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "server_type!: ServerType",
+        "type_info": {
+          "Custom": {
+            "name": "servertype",
+            "kind": {
+              "Enum": [
+                "local",
+                "remote"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "hostname",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "ssh_port",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "ssh_key_id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "9f67bce137048646d428778489baced896a3f9b8ed0af95ec6a9a87fd7eb2e7e"
+}

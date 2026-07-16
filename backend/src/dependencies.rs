@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use sqlx::{Pool, Postgres};
+
 use crate::{
     db,
     services::{
@@ -19,7 +21,10 @@ pub struct Dependencies {
 
 impl Dependencies {
     pub async fn init() -> Result<Self, sqlx::Error> {
-        let db = Arc::new(db::create_pool().await?);
+        Self::init_with_db(Arc::new(db::create_pool().await?))
+    }
+
+    pub fn init_with_db(db: Arc<Pool<Postgres>>) -> Result<Self, sqlx::Error> {
         let user_service = Arc::new(UserService::new(db.clone()));
         let session_service = Arc::new(SessionService::new(db.clone()));
         let variables_service = Arc::new(VariablesService::new(db.clone()));

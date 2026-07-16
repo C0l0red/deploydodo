@@ -22,7 +22,7 @@ pub fn get_env() -> Arc<Environment> {
 
 pub fn init_env() {
     #[cfg(debug_assertions)]
-    dotenv::dotenv().ok();
+    dotenvy::dotenv().ok();
 
     ENVIRONMENT
         .set(Arc::new(Environment {
@@ -43,16 +43,16 @@ where
     std::env::var(key)
         .map(|h| {
             h.parse::<T>()
-                .expect(format!("{key} must be a valid {}", T::type_name()).as_ref())
+                .unwrap_or_else(|_| panic!("{key} must be a valid {}", T::type_name()))
         })
-        .expect(format!("The variable {key} must be present at runtime").as_ref())
+        .unwrap_or_else(|_| panic!("The variable {key} must be present at runtime"))
 }
 
 fn read_file_path_from_env(key: &str) -> String {
     let path = read_env::<String>(key);
 
-    std::fs::read_to_string(path)
-        .expect(format!("The path stored in {key} does not exist").as_ref())
+    std::fs::read_to_string(&path)
+        .unwrap_or_else(|_| panic!("The path stored in {key} ({path}) does not exist"))
 }
 
 trait TypeName {

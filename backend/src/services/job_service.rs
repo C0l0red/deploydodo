@@ -26,9 +26,18 @@ pub struct StoredEvent {
 
 #[derive(sqlx::Type, Serialize, Deserialize, Clone, ToSchema)]
 #[serde(rename_all = "snake_case")]
-#[sqlx(type_name = "TEXT", rename_all = "snake_case")]
+#[sqlx(type_name = "jobtype", rename_all = "snake_case")]
 pub enum JobType {
     CreateServer,
+}
+
+#[derive(sqlx::Type, Serialize, Deserialize, Clone, ToSchema)]
+#[serde(rename_all = "lowercase")]
+#[sqlx(type_name = "jobstatus", rename_all = "lowercase")]
+pub enum JobStatus {
+    Pending,
+    Completed,
+    Failed,
 }
 
 type SenderMap = Mutex<HashMap<String, broadcast::Sender<BroadcastEvent>>>;
@@ -50,14 +59,14 @@ impl JobService {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
 
-        sqlx::query(
+        sqlx::query!(
             "INSERT INTO jobs (id, job_type, status, created_at, updated_at) \
              VALUES ($1, $2, 'pending', $3, $4)",
+            &id,
+            job_type as _,
+            now,
+            now
         )
-        .bind(&id)
-        .bind(job_type)
-        .bind(now)
-        .bind(now)
         .execute(&*self.db)
         .await?;
 
@@ -72,14 +81,14 @@ impl JobService {
         let data_str = data.to_string();
         let now = Utc::now();
 
-        let db_id: i64 = sqlx::query_scalar(
+        let db_id: i64 = sqlx::query_scalar!(
             "INSERT INTO job_events (job_id, event_type, data, created_at) \
              VALUES ($1, $2, $3, $4) RETURNING id",
+            job_id,
+            event_type,
+            &data_str,
+            now
         )
-        .bind(job_id)
-        .bind(event_type)
-        .bind(&data_str)
-        .bind(now)
         .fetch_one(&*self.db)
         .await?;
 
@@ -99,15 +108,17 @@ impl JobService {
 
     /// Mark the job as finished and drop its broadcast sender, closing the channel
     /// for all subscribers.
-    pub async fn finish_job(&self, job_id: &str, status: &str) -> AppResult<()> {
+    pub async fn finish_job(&self, job_id: &str, status: JobStatus) -> AppResult<()> {
         let now = Utc::now();
 
-        sqlx::query("UPDATE jobs SET status = $1, updated_at = $2 WHERE id = $3")
-            .bind(status)
-            .bind(now)
-            .bind(job_id)
-            .execute(&*self.db)
-            .await?;
+        sqlx::query!(
+            "UPDATE jobs SET status = $1, updated_at = $2 WHERE id = $3",
+            status as _,
+            now,
+            job_id
+        )
+        .execute(&*self.db)
+        .await?;
 
         // Dropping the sender signals `RecvError::Closed` to all receivers.
         self.senders.lock().unwrap().remove(job_id);
@@ -117,22 +128,16 @@ impl JobService {
 
     /// Load all persisted events for a job in insertion order.
     pub async fn get_events(&self, job_id: &str) -> AppResult<Vec<StoredEvent>> {
-        let rows: Vec<(i64, String, String)> = sqlx::query_as(
+        let events: Vec<StoredEvent> = sqlx::query_as!(
+            StoredEvent,
             "SELECT id, event_type, data FROM job_events \
              WHERE job_id = $1 ORDER BY id ASC",
+            job_id
         )
-        .bind(job_id)
         .fetch_all(&*self.db)
         .await?;
 
-        Ok(rows
-            .into_iter()
-            .map(|(id, event_type, data)| StoredEvent {
-                id,
-                event_type,
-                data,
-            })
-            .collect())
+        Ok(events)
     }
 
     /// Subscribe to live events for a job.
@@ -146,10 +151,12 @@ impl JobService {
     }
 
     /// Fetch the current status string for a job, or `None` if not found.
-    pub async fn get_job_status(&self, job_id: &str) -> AppResult<Option<String>> {
-        Ok(sqlx::query_scalar("SELECT status FROM jobs WHERE id = $1")
-            .bind(job_id)
-            .fetch_optional(&*self.db)
-            .await?)
+    pub async fn get_job_status(&self, job_id: &str) -> AppResult<Option<JobStatus>> {
+        Ok(sqlx::query_scalar!(
+            r#"SELECT status AS "status!: JobStatus" FROM jobs WHERE id = $1"#,
+            job_id
+        )
+        .fetch_optional(&*self.db)
+        .await?)
     }
 }

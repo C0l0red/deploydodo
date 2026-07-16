@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO variables (name, value, created_at) VALUES ($1, $2, $3)\n             ON CONFLICT(name) DO UPDATE SET value = excluded.value",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "64b5bac39ac5658d8e3c16880a2682adc3f5682f8e5d4d8b0f87d2cecab18e86"
+}

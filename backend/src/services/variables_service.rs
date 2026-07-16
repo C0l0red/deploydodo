@@ -10,7 +10,7 @@ pub trait VariableValueByKey {
 }
 
 #[derive(Debug, sqlx::Type, PartialEq)]
-#[sqlx(type_name = "TEXT", rename_all = "snake_case")]
+#[sqlx(type_name = "VARCHAR", rename_all = "snake_case")]
 pub enum VariableKey {
     IsAdminOnboarded,
     IsServerSetup,
@@ -46,22 +46,23 @@ impl VariablesService {
     }
 
     pub async fn get_all(&self, keys: Vec<VariableKey>) -> AppResult<Vec<Variable>> {
-        Ok(
-            sqlx::query_as("SELECT name, value FROM variables WHERE name = ANY($1)")
-                .bind(keys)
-                .fetch_all(&*self.db)
-                .await?,
+        Ok(sqlx::query_as!(
+            Variable,
+            r#"SELECT name AS "name: VariableKey", value FROM variables WHERE name = ANY($1)"#,
+            keys as _
         )
+        .fetch_all(&*self.db)
+        .await?)
     }
 
     async fn set(&self, name: VariableKey, value: String) -> AppResult<()> {
-        sqlx::query(
+        sqlx::query!(
             "INSERT INTO variables (name, value, created_at) VALUES ($1, $2, $3)
              ON CONFLICT(name) DO UPDATE SET value = excluded.value",
+            name as _,
+            value,
+            Utc::now()
         )
-        .bind(name)
-        .bind(value)
-        .bind(Utc::now())
         .execute(&*self.db)
         .await?;
 

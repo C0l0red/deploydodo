@@ -1,7 +1,13 @@
+BEGIN;
+
+CREATE TYPE JobType AS ENUM('create_server');
+
+CREATE TYPE JobStatus AS ENUM('pending', 'completed', 'failed');
+
 CREATE TABLE jobs (
-    id TEXT PRIMARY KEY,
-    job_type TEXT NOT NULL,
-    status TEXT NOT NULL DEFAULT 'pending',
+    id VARCHAR(40) PRIMARY KEY,
+    job_type JobType NOT NULL,
+    status JobStatus NOT NULL DEFAULT 'pending',
     created_at TIMESTAMPTZ NOT NULL,
     updated_at TIMESTAMPTZ NOT NULL
 );
@@ -14,3 +20,5 @@ CREATE TABLE job_events (
     created_at TIMESTAMPTZ NOT NULL,
     FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE
 );
+
+COMMIT;

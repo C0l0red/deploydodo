@@ -38,7 +38,7 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: cargo-debug-${{ runner.os }}
 
       - name: Run cargo fix
         run: cargo fix --workspace --all-targets --allow-dirty --allow-staged
@@ -60,6 +60,18 @@ jobs:
       - name: Check formatting
         run: cargo fmt --all -- --check
 
+  cargo-clippy:
+    name: cargo fmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Check formatting
+        run: cargo clippy
+
   build:
     name: cargo make build-debug
     runs-on: ubuntu-latest
@@ -78,7 +90,7 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: cargo-debug-${{ runner.os }}
 
       - name: Install Node.js
         uses: actions/setup-node@v4
@@ -95,3 +107,48 @@ jobs:
 
       - name: Build
         run: cargo make build-debug
+  test-backend:
+    name: Test backend
+    runs-on: ubuntu-latest
+    env:
+      SQLX_OFFLINE: true
+      DATABASE_URL: postgres://deploydodo:deploydodo@localhost:5432/deploydodo
+      LOCAL_SSH_HOSTNAME: localhost
+      LOCAL_SSH_PORT: 22
+      LOCAL_SSH_USERNAME: root
+    services:
+      postgres:
+        image: postgres:15.18-alpine3.24
+        env:
+          POSTGRES_USER: deploydodo
+          POSTGRES_PASSWORD: deploydodo
+          POSTGRES_DB: deploydodo
+        # Ensure the runner waits until Postgres is completely healthy
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: actions/cache@v6
+        name: Cache rust dependencies
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: cargo-debug-${{ runner.os }}
+      - name: Generate RSA
+        run: ./configure_rsa.sh
+
+      - name: Test
+        run: cargo test

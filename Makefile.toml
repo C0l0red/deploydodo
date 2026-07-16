@@ -45,6 +45,22 @@ command = "sqlx"
 args = ["migrate", "add", "-t", "-r", "${@}"]
 cwd = "backend"
 
+[tasks.prepare-query]
+description = "Prepare SQLx for compile time query checking"
+command = "cargo"
+args = ["sqlx", "prepare", "--workspace"]
+
+[tasks.sleep3s]
+description = "Sleep for 3s"
+command = "sleep"
+args = ["3"]
+
+[tasks.check-query]
+description = "Check if .sqlx cached prepared queries are up to date"
+dependencies = ["sleep3s"]
+command = "cargo"
+args = ["sqlx", "prepare", "--check", "--workspace"]
+
 [tasks.migrate]
 description = "Run database migrations"
 command = "sqlx"
@@ -75,7 +91,7 @@ args = ["compose", "-f", "dev.docker-compose.yaml", "up", "-d"]
 
 [tasks.dev]
 description = "Run backend and frontend concurrently"
-dependencies = ["deploy-dev-db"]
+dependencies = ["deploy-dev-db", "check-query"]
 run_task = { name = ["backend", "frontend"], parallel = true }
 
 [tasks.build]

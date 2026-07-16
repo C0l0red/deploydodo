@@ -8,7 +8,7 @@ use crate::dependencies::Dependencies;
 use crate::error::{AppError, AppResult};
 use crate::extractors::Auth;
 use crate::services::ssh_service::SshKey;
-use crate::services::types::JobType;
+use crate::services::types::{JobStatus, JobType};
 
 // ── SSH auth sub-types ────────────────────────────────────────────────────────
 
@@ -196,7 +196,10 @@ pub async fn create_remote_server(
 async fn run_job(job_id: String, request: CreateRemoteServerRequest, deps: Dependencies) {
     match handle_remote(&job_id, &request, &deps).await {
         Ok(()) => {
-            let _ = deps.job_service.finish_job(&job_id, "completed").await;
+            let _ = deps
+                .job_service
+                .finish_job(&job_id, JobStatus::Completed)
+                .await;
         }
         Err(e) => {
             tracing::error!("{e}");
@@ -204,7 +207,10 @@ async fn run_job(job_id: String, request: CreateRemoteServerRequest, deps: Depen
                 .job_service
                 .emit(&job_id, "error", json!({ "message": e.to_string() }))
                 .await;
-            let _ = deps.job_service.finish_job(&job_id, "failed").await;
+            let _ = deps
+                .job_service
+                .finish_job(&job_id, JobStatus::Failed)
+                .await;
         }
     }
 }
@@ -305,7 +311,7 @@ async fn create_ssh_key(
     match auth {
         SshAuthRequest::Password { username, password } => {
             deps.ssh_service
-                .create_password_auth(&key_name, username, password)
+                .create_password_auth(key_name, username, password)
                 .await
         }
         SshAuthRequest::KeyPair {
@@ -314,7 +320,7 @@ async fn create_ssh_key(
             public_key,
         } => {
             deps.ssh_service
-                .create_key_auth(&key_name, username, private_key, public_key.as_deref())
+                .create_key_auth(key_name, username, private_key, public_key.as_deref())
                 .await
         }
     }

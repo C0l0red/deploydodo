@@ -7,3 +7,5 @@ pub mod middleware;
 pub mod openapi;
 pub mod routes;
 pub mod services;
+#[cfg(test)]
+pub mod test;

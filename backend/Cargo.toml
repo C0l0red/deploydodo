@@ -34,5 +34,6 @@ tokio-stream = "0.1"
 bollard = { version = "0.21", features = ["chrono"] }
 bytes = "1"
 dodosh = { path = "../dodosh" }
-dotenv = "0.15.0"
+dotenvy = "0.15.0"
 serde_urlencoded = "0.7.1"
+axum-test = "21.0.0"

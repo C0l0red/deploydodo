@@ -7,7 +7,7 @@ use axum::{
 };
 use tokio::sync::broadcast::error::RecvError;
 
-use crate::{dependencies::Dependencies, error::AppResult};
+use crate::{dependencies::Dependencies, error::AppResult, services::types::JobStatus};
 use crate::{error::AppError, extractors::Auth};
 
 #[utoipa::path(
@@ -31,7 +31,7 @@ pub async fn job_events(
     if status.is_none() {
         return Err(AppError::JobNotFound);
     }
-    let is_already_done = matches!(status.as_deref(), Some("completed") | Some("failed"));
+    let is_already_done = matches!(status, Some(JobStatus::Completed) | Some(JobStatus::Failed));
 
     let maybe_rx = deps.job_service.subscribe(&job_id);
 

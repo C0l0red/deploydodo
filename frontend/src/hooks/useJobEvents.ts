@@ -5,6 +5,7 @@ import type {
   JobErrorPayload,
   JobProgressPayload,
 } from '@/api/types'
+import { getAuthToken } from '@/api/client'
 
 type UseJobEventsOptions = {
   onProgress: (steps: ConnectingStep[]) => void
@@ -17,7 +18,7 @@ export function useJobEvents(
   { onProgress, onComplete, onError }: UseJobEventsOptions,
 ) {
   useEffect(() => {
-    const es = new EventSource(`/api/jobs/${jobId}/events`)
+    const es = new EventSource(`/api/jobs/${jobId}/events?token=${getAuthToken()}`)
 
     es.addEventListener('progress', (e: MessageEvent) => {
       const payload = JSON.parse(e.data) as JobProgressPayload

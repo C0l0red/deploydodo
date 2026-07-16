@@ -18,7 +18,7 @@ pub struct UserService {
 
 #[derive(Type, Serialize, ToSchema)]
 #[serde(rename_all = "lowercase")]
-#[sqlx(type_name = "TEXT", rename_all = "lowercase")]
+#[sqlx(type_name = "accounttype", rename_all = "lowercase")]
 pub enum AccountType {
     Admin,
     Member,
@@ -29,7 +29,7 @@ pub struct User {
     pub id: Option<i64>,
     pub name: String,
     pub email: String,
-    password_hash: String,
+    pub password_hash: String,
     pub account_type: AccountType,
     pub created_at: DateTime<chrono::Utc>,
 }
@@ -71,29 +71,30 @@ impl UserService {
     pub async fn create_user(&self, mut user: User) -> AppResult<User> {
         user.password_hash = Self::hash_password(&user.password_hash)?;
 
-        Ok(sqlx::query_as::<_, User>(
-            "INSERT INTO users (name, email, password_hash, account_type, created_at) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+        Ok(sqlx::query_as!(User,
+            r#"INSERT INTO users (name, email, password_hash, account_type, created_at) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, email, password_hash, account_type AS "account_type: AccountType", created_at"#,
+            &user.name,
+            &user.email,
+            &user.password_hash,
+            &user.account_type as _,
+            &user.created_at
         )
-        .bind(&user.name)
-        .bind(&user.email)
-        .bind(&user.password_hash)
-        .bind(&user.account_type)
-        .bind(&user.created_at)
         .fetch_one(&*self.db)
         .await?)
     }
 
     pub async fn count_users(&self) -> AppResult<i64> {
-        Ok(sqlx::query_scalar("SELECT COUNT(*) FROM users")
+        Ok(sqlx::query_scalar!("SELECT COUNT(*) FROM users")
             .fetch_one(&*self.db)
-            .await?)
+            .await?
+            .unwrap_or(0))
     }
 
     pub async fn get_by_email(&self, email: &str) -> AppResult<Option<User>> {
-        Ok(sqlx::query_as::<_, User>(
-            "SELECT id, name, email, password_hash, account_type, created_at FROM users WHERE email = $1",
+        Ok(sqlx::query_as!(User,
+            r#"SELECT id, name, email, password_hash, account_type AS "account_type: AccountType", created_at FROM users WHERE email = $1"#,
+            email
         )
-        .bind(email)
         .fetch_optional(&*self.db)
         .await?)
     }

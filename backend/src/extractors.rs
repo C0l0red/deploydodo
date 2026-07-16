@@ -23,6 +23,6 @@ impl FromRequestParts<Dependencies> for Auth {
                 return Ok(Auth(user));
             }
         }
-        return Err(AppError::Unauthorized);
+        Err(AppError::Unauthorized)
     }
 }

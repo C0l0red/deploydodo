@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
-use sqlx::{PgPool, Row};
+use sqlx::PgPool;
 use utoipa::ToSchema;
 
 use crate::{
@@ -13,7 +13,7 @@ use crate::{
 
 #[derive(Debug, Serialize, Deserialize, ToSchema, sqlx::Type, Clone)]
 #[serde(rename_all = "lowercase")]
-#[sqlx(type_name = "TEXT", rename_all = "lowercase")]
+#[sqlx(type_name = "authtype", rename_all = "lowercase")]
 pub enum AuthType {
     Password,
     KeyPair,
@@ -90,14 +90,14 @@ impl SshService {
         username: &str,
         password: &str,
     ) -> AppResult<SshKey> {
-        let id: i64 = sqlx::query_scalar(
+        let id: i64 = sqlx::query_scalar!(
             "INSERT INTO ssh_keys (name, username, password, auth_type, created_at) VALUES ($1, $2, $3, $4, $5) RETURNING id",
+            name,
+            username,
+            password,
+            AuthType::Password as _,
+            Utc::now()
         )
-        .bind(name)
-        .bind(username)
-        .bind(password)
-        .bind(AuthType::Password)
-        .bind(Utc::now())
         .fetch_one(&*self.db)
         .await
         ?;
@@ -117,15 +117,15 @@ impl SshService {
         private_key: &str,
         public_key: Option<&str>,
     ) -> AppResult<SshKey> {
-        let id: i64 = sqlx::query_scalar(
+        let id: i64 = sqlx::query_scalar!(
             "INSERT INTO ssh_keys (name, username, private_key, public_key, auth_type, created_at) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
+            name,
+            username,
+            private_key,
+            public_key,
+            AuthType::KeyPair as _,
+            Utc::now()
         )
-        .bind(name)
-        .bind(username)
-        .bind(private_key)
-        .bind(public_key)
-        .bind(AuthType::KeyPair)
-        .bind(Utc::now())
         .fetch_one(&*self.db)
         .await
         ?;
@@ -140,32 +140,34 @@ impl SshService {
     }
 
     pub async fn get_key_by_id(&self, key_id: &i64) -> AppResult<SshKey> {
-        let row = sqlx::query(
-            "SELECT id, name, username, auth_type, password, private_key, public_key FROM ssh_keys WHERE id = $1",
+        let row = sqlx::query!(
+            r#"SELECT id, name, username, auth_type AS "auth_type: AuthType", password, private_key, public_key FROM ssh_keys WHERE id = $1"#,
+            key_id
         )
-        .bind(key_id)
         .fetch_optional(&*self.db)
         .await
         ?;
 
         let row = row.ok_or(AppError::Validation("SSH key not found".into()))?;
 
-        let auth_type: AuthType = row.try_get("auth_type")?;
-
-        Ok(if auth_type.is_keypair() {
+        Ok(if row.auth_type.is_keypair() {
             SshKey::KeyPair {
-                id: row.try_get("id")?,
-                name: row.try_get("name")?,
-                username: row.try_get("username")?,
-                private_key: row.try_get("private_key")?,
-                public_key: row.try_get("public_key").ok(),
+                id: row.id,
+                name: row.name,
+                username: row.username,
+                private_key: row
+                    .private_key
+                    .ok_or(AppError::validation("private_key is None in Server"))?,
+                public_key: row.public_key,
             }
         } else {
             SshKey::Password {
-                id: row.try_get("id")?,
-                name: row.try_get("name")?,
-                username: row.try_get("username")?,
-                password: row.try_get("password")?,
+                id: row.id,
+                name: row.name,
+                username: row.username,
+                password: row
+                    .password
+                    .ok_or(AppError::validation("password is None in Server"))?,
             }
         })
     }
