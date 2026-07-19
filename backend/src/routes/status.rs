@@ -22,6 +22,7 @@ pub struct StatusResponse {
     pub is_local_server_setup: bool,
 }
 
+// FIXME: This seems quite roundabout and can be simplified with a struct returned
 #[utoipa::path(
     get,
     path = "/api/status",

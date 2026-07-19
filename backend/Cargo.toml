@@ -37,3 +37,5 @@ dodosh = { path = "../dodosh" }
 dotenvy = "0.15.0"
 serde_urlencoded = "0.7.1"
 axum-test = "21.0.0"
+rstest = "0.26.1"
+url = "2.5.8"

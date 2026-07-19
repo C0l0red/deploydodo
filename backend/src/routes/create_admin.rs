@@ -3,31 +3,16 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 use crate::error::{AppError, AppResult};
+use crate::extractors::RequestJson;
 use crate::services::types::VariableKey;
+use crate::validation::{NonEmptyString, PlainPassword};
 use crate::{dependencies::Dependencies, services::types::AccountType};
 
 #[derive(Deserialize, ToSchema)]
 pub struct CreateAdminRequest {
-    pub name: String,
-    pub email: String,
-    pub password: String,
-}
-
-impl CreateAdminRequest {
-    pub fn validate(&self) -> AppResult<()> {
-        if self.name.trim().is_empty() {
-            return Err(AppError::bad_request("Name is required"));
-        }
-        if self.email.trim().is_empty() {
-            return Err(AppError::bad_request("Email is required"));
-        }
-        if self.password.len() < 8 {
-            return Err(AppError::bad_request(
-                "Password must be at least 8 characters",
-            ));
-        }
-        Ok(())
-    }
+    pub name: NonEmptyString,
+    pub email: NonEmptyString,
+    pub password: PlainPassword,
 }
 
 #[derive(Serialize, ToSchema)]
@@ -54,10 +39,8 @@ pub struct AdminResponse {
 )]
 pub async fn create_admin(
     State(deps): State<Dependencies>,
-    Json(request): Json<CreateAdminRequest>,
+    RequestJson(request): RequestJson<CreateAdminRequest>,
 ) -> AppResult<(StatusCode, Json<AdminResponse>)> {
-    request.validate()?;
-
     let count = deps.user_service.count_users().await?;
     if count > 0 {
         return Err(AppError::AdminAlreadyConfigured);
@@ -96,8 +79,10 @@ mod tests {
 
     use super::create_admin;
 
+
+    // FIXME: Now that we have unit tests that ensure the types validate properly, do we still need tests like this?
     #[sqlx::test]
-    fn create_admin_fails_if_name_is_missing(db: Pool<Postgres>) {
+    async fn create_admin_fails_if_name_is_missing(db: Pool<Postgres>) {
         let app = App::register_create_admin(db).await;
 
         app.server
@@ -109,7 +94,7 @@ mod tests {
     }
 
     #[sqlx::test]
-    fn create_admin_fails_if_email_is_missing(db: Pool<Postgres>) {
+    async fn create_admin_fails_if_email_is_missing(db: Pool<Postgres>) {
         let app = App::register_create_admin(db).await;
 
         app.server
@@ -121,7 +106,7 @@ mod tests {
     }
 
     #[sqlx::test]
-    fn create_admin_fails_if_password_is_missing(db: Pool<Postgres>) {
+    async fn create_admin_fails_if_password_is_missing(db: Pool<Postgres>) {
         let app = App::register_create_admin(db).await;
 
         app.server
@@ -133,44 +118,44 @@ mod tests {
     }
 
     #[sqlx::test]
-    fn create_admin_fails_if_name_is_blank(db: Pool<Postgres>) {
+    async fn create_admin_fails_if_name_is_blank(db: Pool<Postgres>) {
         let app = App::register_create_admin(db).await;
 
         app.server
             .post("/api/setup/admin")
-            .json(&json!({"name": "", "email": "", "password": ""}))
+            .json(&json!({"name": "", "email": "test@user.com", "password": ""}))
             .await
-            .assert_status_bad_request()
+            .assert_status_unprocessable_entity()
             .assert_json_contains(&json!({
-                "message": "Name is required"
+                "message": "name: must not be empty"
             }));
     }
 
     #[sqlx::test]
-    fn create_admin_fails_if_email_is_blank(db: Pool<Postgres>) {
+    async fn create_admin_fails_if_email_is_blank(db: Pool<Postgres>) {
         let app = App::register_create_admin(db).await;
 
         app.server
             .post("/api/setup/admin")
             .json(&json!({"name": "Test user", "email": "", "password": ""}))
             .await
-            .assert_status_bad_request()
+            .assert_status_unprocessable_entity()
             .assert_json_contains(&json!({
-                "message": "Email is required"
+                "message": "email: must not be empty"
             }));
     }
 
     #[sqlx::test]
-    fn create_admin_fails_if_password_is_blank(db: Pool<Postgres>) {
+    async fn create_admin_fails_if_password_is_blank(db: Pool<Postgres>) {
         let app = App::register_create_admin(db).await;
 
         app.server
             .post("/api/setup/admin")
             .json(&json!({"name": "Test user", "email": "test@user.com", "password": ""}))
             .await
-            .assert_status_bad_request()
+            .assert_status_unprocessable_entity()
             .assert_json_contains(&json!({
-                "message": "Password must be at least 8 characters"
+                "message": "password: must be at least 8 characters"
             }));
     }
 

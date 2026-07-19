@@ -60,6 +60,29 @@ pub enum AppError {
 }
 
 impl AppError {
+    pub fn message(&self) -> String {
+        match self {
+            AppError::Validation(message) => message.to_string(),
+            AppError::Database(message) => message.to_string(),
+            AppError::Ssh(message) => message.to_string(),
+            AppError::JobNotFound => self.to_string(),
+            AppError::LocalDockerConnect(message) => message.to_string(),
+            AppError::RemoteDockerConnect(message) => message.to_string(),
+            AppError::DockerOperation(message) => message.to_string(),
+            AppError::AdminAlreadyConfigured => self.to_string(),
+            AppError::PasswordHash => self.to_string(),
+            AppError::InternalServerError(message) => message.to_string(),
+            AppError::BadRequest(message) => message.to_string(),
+            AppError::NotFound(message) => message.to_string(),
+            AppError::Unauthorized => self.to_string(),
+            AppError::InvalidCredentials => self.to_string(),
+            AppError::LocalServerAlreadyExists => self.to_string(),
+            AppError::MissingKeySecret => self.to_string(),
+        }
+    }
+}
+
+impl AppError {
     pub fn validation(message: &str) -> Self {
         Self::Validation(message.to_owned())
     }

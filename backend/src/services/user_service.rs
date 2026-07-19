@@ -54,9 +54,9 @@ impl From<CreateAdminRequest> for User {
     fn from(value: CreateAdminRequest) -> Self {
         User {
             id: None,
-            name: value.name,
-            email: value.email,
-            password_hash: value.password,
+            name: value.name.to_string(),
+            email: value.email.to_string(),
+            password_hash: value.password.to_string(),
             account_type: AccountType::Admin,
             created_at: Utc::now(),
         }

@@ -9,7 +9,7 @@ use crate::error::{AppError, AppResult};
 use crate::extractors::Auth;
 use crate::services::ssh_service::SshKey;
 use crate::services::types::{JobStatus, JobType};
-
+use crate::validation::{NonEmptyString, ServerPort};
 // ── SSH auth sub-types ────────────────────────────────────────────────────────
 
 #[derive(Deserialize, ToSchema)]
@@ -22,7 +22,8 @@ pub enum SshAuthRequest {
     KeyPair {
         username: String,
         #[serde(rename = "privateKey")]
-        private_key: String,
+        private_key: NonEmptyString,
+        // FIXME: Why is this optional? I don't seem to get this struct
         #[serde(rename = "publicKey")]
         public_key: Option<String>,
     },
@@ -44,6 +45,7 @@ impl SshAuthRequest {
                 private_key,
                 ..
             } => {
+                // FIXME: I don't understand this validation logic, how can username be defined here?
                 if username.trim().is_empty() {
                     return Err(AppError::Validation("Username is required".into()));
                 }
@@ -76,9 +78,9 @@ impl SshAuthRequest {
 
 #[derive(Deserialize, ToSchema)]
 pub struct CreateRemoteServerRequest {
-    pub name: String,
+    pub name: NonEmptyString,
     pub hostname: String,
-    pub port: u16,
+    pub port: ServerPort,
     pub auth: SshAuthRequest,
 }
 
@@ -239,7 +241,7 @@ async fn handle_remote(
 
     let session = SshSession::connect(
         hostname,
-        *port,
+        **port,
         auth.get_username(),
         auth.get_ssh_auth(),
         SshTimeout::inactivity_secs(300),
@@ -281,7 +283,7 @@ async fn handle_remote(
 
     let server = deps
         .server_service
-        .create_remote_server(name, hostname, *port, *ssh_key.id())
+        .create_remote_server(name, hostname, **port, *ssh_key.id())
         .await?;
 
     tracing::info!(id = %&server.id(), ssh_key_id = ssh_key.id(), "remote server created");
