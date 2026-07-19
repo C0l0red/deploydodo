@@ -1,69 +1,12 @@
 import { useState } from 'react'
 import { ArrowBackIcon, WarningCircleIcon } from '@/assets/icons'
-import { cn } from '@/utilities/cn'
 import { useToast } from '@/components/Toast'
 import { useCreateLocalServer } from '@/api/mutations'
 import type { CreateLocalServerResponse } from '@/api/Api'
 import { Card } from '@/pages/Dashboard/Servers/PageLayout'
 import { invalidateStatusQuery } from '@/api/queries'
-
-function FormField({
-  label,
-  helperText,
-  error,
-  children,
-}: {
-  label: string
-  helperText?: string
-  error?: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="flex flex-col gap-1">
-      <label className="font-manrope font-bold text-base leading-6 text-high-contrast">
-        {label}
-      </label>
-      {children}
-      {error ? (
-        <span className="font-manrope font-normal text-xs leading-4 text-error pl-3">{error}</span>
-      ) : helperText ? (
-        <span className="font-manrope font-normal text-xs leading-4 text-[#999ca0] pl-3">
-          {helperText}
-        </span>
-      ) : null}
-    </div>
-  )
-}
-
-function FieldInput({
-  name,
-  value,
-  onChange,
-  onBlur,
-  placeholder,
-  hasError,
-}: {
-  name: string
-  value: string
-  onChange: React.ChangeEventHandler<HTMLInputElement>
-  onBlur?: React.FocusEventHandler<HTMLInputElement>
-  placeholder: string
-  hasError?: boolean
-}) {
-  return (
-    <input
-      name={name}
-      value={value}
-      onChange={onChange}
-      onBlur={onBlur}
-      placeholder={placeholder}
-      className={cn(
-        'bg-background border rounded-lg px-3 py-2 font-manrope font-normal text-sm leading-6 text-text-secondary outline-none transition-[border-color] duration-150 placeholder:text-text-secondary focus:border-high-contrast w-full',
-        hasError ? 'border-error!' : 'border-neutral-100',
-      )}
-    />
-  )
-}
+import { Button } from '@/components/Button'
+import { TextInput } from '@/components/TextInput'
 
 const whatHappensNext = [
   {
@@ -83,8 +26,7 @@ export function LocalServerView({
   onBack: () => void
   onSuccess: (server: CreateLocalServerResponse) => void
 }) {
-  const [name, setName] = useState('Local Machine')
-  const [hostname, setHostname] = useState('localhost')
+  const [name, setName] = useState('')
   const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
 
@@ -103,7 +45,7 @@ export function LocalServerView({
     },
   })
 
-  function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.SubmitEvent) {
     e.preventDefault()
     if (!name.trim()) return
     setError(null)
@@ -133,29 +75,14 @@ export function LocalServerView({
           </div>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-6" noValidate>
-            <FormField
+            <TextInput
               label="Server Name"
+              name="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Local Machine"
               helperText="A friendly name to identify this server"
-            >
-              <FieldInput
-                name="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Local Machine"
-              />
-            </FormField>
-
-            <FormField
-              label="Hostname"
-              helperText="The hostname or IP of this machine (default: localhost)"
-            >
-              <FieldInput
-                name="hostname"
-                value={hostname}
-                onChange={(e) => setHostname(e.target.value)}
-                placeholder="localhost"
-              />
-            </FormField>
+            />
 
             {error && (
               <div className="bg-[rgba(211,48,48,0.12)] border border-[#d33030] rounded-lg p-3 flex flex-col gap-1">
@@ -171,13 +98,13 @@ export function LocalServerView({
               </div>
             )}
 
-            <button
+            <Button
               type="submit"
-              disabled={createLocal.isPending}
+              disabled={createLocal.isPending || !name}
               className="w-full bg-secondary text-pure-white font-manrope font-bold text-sm leading-6 rounded-lg px-4 py-2 hover:opacity-[0.88] active:opacity-75 transition-opacity duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {createLocal.isPending ? 'Configuring…' : 'Configure Server'}
-            </button>
+            </Button>
           </form>
         </div>
       </Card>

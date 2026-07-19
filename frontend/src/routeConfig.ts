@@ -4,15 +4,11 @@ import { statusQuery, validateSessionQuery } from '@/api/queries'
 export const rootRoute = createRootRoute({ component: Outlet })
 
 export async function requireAuth() {
-
-  try {
-    await validateSessionQuery();
-  } catch (e) {
-    console.error(e);
+  const [validateSession, status] = await Promise.all([validateSessionQuery(), statusQuery()])
+  if (!validateSession.valid) {
     throw redirect({ to: '/login' })
   }
 
-  const status = await statusQuery()
   if (!status.isAdminOnboarded) throw redirect({ to: '/onboarding' })
 
   return { status }

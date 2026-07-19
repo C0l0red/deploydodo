@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: deploydodo
       POSTGRES_DB: deploydodo
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U deploydodo -d deploydodo"]
+      test: ['CMD-SHELL', 'pg_isready -U deploydodo -d deploydodo']
       interval: 2s
       timeout: 3s
       retries: 10
@@ -23,11 +23,12 @@ services:
       context: .
       dockerfile: Dockerfile
     extra_hosts:
-      - "deploydodo.host:host-gateway"
+      - 'deploydodo.host:host-gateway'
     volumes:
       - ./key_rsa:/key_rsa
+      - /var/run/docker.sock:/var/run/docker.sock
     ports:
-      - "3000:3000"
+      - '3000:3000'
     networks:
       - dodonet
       - public

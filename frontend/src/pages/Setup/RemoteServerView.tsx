@@ -1,104 +1,13 @@
 import { useFormik } from 'formik'
-import * as Yup from 'yup'
 import { ArrowBackIcon, WarningCircleIcon } from '@/assets/icons'
 import { cn } from '@/utilities/cn'
 import { useCreateRemoteServer } from '@/api/mutations'
 import { Card } from '@/pages/Dashboard/Servers/PageLayout'
-
-type AuthMethod = 'ssh-key' | 'password'
-
-type FormValues = {
-  name: string
-  hostname: string
-  port: string
-  username: string
-  authMethod: AuthMethod
-  privateKey: string
-  password: string
-}
-
-const validationSchema = Yup.object({
-  name: Yup.string().trim().required('Server name is required'),
-  hostname: Yup.string().trim().required('Host / IP address is required'),
-  port: Yup.number()
-    .typeError('Port must be a number')
-    .integer('Port must be a whole number')
-    .min(1, 'Port must be between 1 and 65535')
-    .max(65535, 'Port must be between 1 and 65535')
-    .required('SSH port is required'),
-  username: Yup.string().trim().required('Username is required'),
-  privateKey: Yup.string().when('authMethod', {
-    is: 'ssh-key',
-    then: (s) => s.trim().required('Private key is required'),
-    otherwise: (s) => s,
-  }),
-  password: Yup.string().when('authMethod', {
-    is: 'password',
-    then: (s) => s.required('Password is required'),
-    otherwise: (s) => s,
-  }),
-})
-
-function FormField({
-  label,
-  helperText,
-  error,
-  children,
-}: {
-  label: string
-  helperText?: string
-  error?: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="flex flex-col gap-1">
-      <label className="font-manrope font-bold text-base leading-6 text-high-contrast">
-        {label}
-      </label>
-      {children}
-      {error ? (
-        <span className="font-manrope font-normal text-xs leading-4 text-error pl-3">{error}</span>
-      ) : helperText ? (
-        <span className="font-manrope font-normal text-xs leading-4 text-[#999ca0] pl-3">
-          {helperText}
-        </span>
-      ) : null}
-    </div>
-  )
-}
-
-function FieldInput({
-  name,
-  value,
-  onChange,
-  onBlur,
-  placeholder,
-  type = 'text',
-  hasError = false,
-}: {
-  name: string
-  value: string
-  onChange: React.ChangeEventHandler<HTMLInputElement>
-  onBlur: React.FocusEventHandler<HTMLInputElement>
-  placeholder: string
-  type?: string
-  hasError?: boolean
-}) {
-  return (
-    <input
-      name={name}
-      value={value}
-      onChange={onChange}
-      onBlur={onBlur}
-      type={type}
-      placeholder={placeholder}
-      className={cn(
-        'bg-background border rounded-lg px-3 py-2 font-manrope font-normal text-sm leading-6 text-text-secondary outline-none transition-[border-color] duration-150 placeholder:text-text-secondary focus:border-high-contrast w-full',
-        hasError ? 'border-error!' : 'border-neutral-100',
-      )}
-    />
-  )
-}
+import { addServerValidationSchema } from '@/validations/addServer'
+import { Button } from '@/components/Button'
+import { ButtonGroup } from '@/components/ButtonGroup'
+import { Textarea } from '@/components/Textarea'
+import { TextInput } from '@/components/TextInput'
 
 const whatHappensNext = [
   {
@@ -118,22 +27,26 @@ export function RemoteServerView({
   onBack: () => void
   onConnect: (jobId: string) => void
 }) {
-  const createRemoteServer = useCreateRemoteServer()
+  const createRemoteServer = useCreateRemoteServer({
+    onSuccess: (data) => {
+      onConnect(data.jobId)
+    },
+  })
 
-  const formik = useFormik<FormValues>({
+  const formik = useFormik({
     initialValues: {
       name: '',
       hostname: '',
       port: '22',
       username: 'root',
-      authMethod: 'ssh-key',
+      authMethod: 'password',
       privateKey: '',
       password: '',
     },
-    validationSchema,
+    validationSchema: addServerValidationSchema,
     onSubmit: (values) => {
       const auth =
-        values.authMethod === 'ssh-key'
+        values.authMethod === 'keypair'
           ? ({
               authType: 'keypair',
               username: values.username,
@@ -145,37 +58,30 @@ export function RemoteServerView({
               password: values.password,
             } as const)
 
-      createRemoteServer.mutate(
-        {
-          name: values.name.trim(),
-          hostname: values.hostname.trim(),
-          port: parseInt(values.port, 10),
-          auth,
-        },
-        {
-          onSuccess: (data) => {
-            onConnect(data.jobId)
-          },
-        },
-      )
+      createRemoteServer.mutate({
+        name: values.name.trim(),
+        hostname: values.hostname.trim(),
+        port: Number(values.port),
+        auth,
+      })
     },
   })
 
-  const authMethod = formik.values.authMethod
   const isPending = createRemoteServer.isPending
+  const isKeyPair = formik.values.authMethod === 'keypair'
 
   return (
     <>
       <Card className="p-8">
         <div className="flex flex-col gap-6">
-          <button
+          <Button
             type="button"
             onClick={onBack}
             className="text-high-contrast hover:opacity-70 transition-opacity shrink-0"
             aria-label="Go back"
           >
             <ArrowBackIcon />
-          </button>
+          </Button>
 
           <div className="flex flex-col gap-2">
             <h2 className="font-sans font-semibold text-2xl leading-8 text-high-contrast m-0">
@@ -188,128 +94,99 @@ export function RemoteServerView({
           </div>
 
           <form onSubmit={formik.handleSubmit} className="flex flex-col gap-6" noValidate>
-            <FormField
+            <TextInput
               label="Server Name"
+              name="name"
+              value={formik.values.name}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+              placeholder="e.g. Production server"
               helperText="A friendly name to identify this server"
-              error={formik.touched.name ? formik.errors.name : undefined}
-            >
-              <FieldInput
-                name="name"
-                value={formik.values.name}
-                onChange={formik.handleChange}
-                onBlur={formik.handleBlur}
-                placeholder="e.g. Production server"
-                hasError={formik.touched.name && !!formik.errors.name}
-              />
-            </FormField>
+              hasError={formik.touched.name && !!formik.errors.name}
+              errorMessage={formik.errors.name}
+            />
 
-            <FormField
+            <TextInput
               label="Host / IP Address"
+              name="hostname"
+              value={formik.values.hostname}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+              placeholder="e.g. 192.168.1.100 or server.example.com"
               helperText="The IP address or hostname of your remote server"
-              error={formik.touched.hostname ? formik.errors.hostname : undefined}
-            >
-              <FieldInput
-                name="hostname"
-                value={formik.values.hostname}
-                onChange={formik.handleChange}
-                onBlur={formik.handleBlur}
-                placeholder="e.g. 192.168.1.100 or server.example.com"
-                hasError={formik.touched.hostname && !!formik.errors.hostname}
-              />
-            </FormField>
+              hasError={formik.touched.hostname && !!formik.errors.hostname}
+              errorMessage={formik.errors.hostname}
+            />
 
             <div className="flex gap-6">
-              <FormField
-                label="SSH Port"
-                helperText="Default: 22"
-                error={formik.touched.port ? formik.errors.port : undefined}
-              >
-                <FieldInput
+              <div className="flex-1">
+                <TextInput
+                  label="SSH Port"
                   name="port"
                   value={formik.values.port}
                   onChange={formik.handleChange}
                   onBlur={formik.handleBlur}
                   placeholder="22"
+                  helperText="Default: 22"
                   hasError={formik.touched.port && !!formik.errors.port}
+                  errorMessage={formik.errors.port}
                 />
-              </FormField>
-              <FormField
-                label="Username"
-                helperText="SSH user (recommended: root)"
-                error={formik.touched.username ? formik.errors.username : undefined}
-              >
-                <FieldInput
+              </div>
+              <div className="flex-1">
+                <TextInput
+                  label="Username"
                   name="username"
                   value={formik.values.username}
                   onChange={formik.handleChange}
                   onBlur={formik.handleBlur}
                   placeholder="root"
+                  helperText="SSH user (recommended: root)"
                   hasError={formik.touched.username && !!formik.errors.username}
+                  errorMessage={formik.errors.username}
                 />
-              </FormField>
-            </div>
-
-            <div className="flex flex-col gap-3">
-              <span className="font-manrope font-bold text-base leading-6 text-high-contrast">
-                Authentication Method
-              </span>
-              <div className="inline-flex border border-secondary rounded-xl p-1 gap-1 w-fit">
-                {(['ssh-key', 'password'] as AuthMethod[]).map((method) => (
-                  <button
-                    key={method}
-                    type="button"
-                    onClick={() => formik.setFieldValue('authMethod', method)}
-                    className={[
-                      'rounded-lg px-2 py-1 h-8 font-manrope font-bold text-sm leading-6 transition-colors duration-150',
-                      authMethod === method ? 'bg-secondary text-pure-white' : 'text-high-contrast',
-                    ].join(' ')}
-                  >
-                    {method === 'ssh-key' ? 'SSH Private Key' : 'Password'}
-                  </button>
-                ))}
               </div>
             </div>
+            <ButtonGroup
+              label="Authentication Method"
+              options={[
+                { label: 'Password', value: 'password' },
+                { label: 'Key Pair', value: 'keypair' },
+              ]}
+              value={formik.values.authMethod}
+              onSelect={(value) => formik.setFieldValue('authMethod', value)}
+            />
 
-            {authMethod === 'ssh-key' ? (
-              <div className="flex flex-col gap-1">
-                <textarea
-                  name="privateKey"
-                  value={formik.values.privateKey}
-                  onChange={formik.handleChange}
-                  onBlur={formik.handleBlur}
-                  placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"
-                  className={cn(
-                    'bg-background border rounded-lg px-3.75 py-3.75 h-33 font-sans font-normal text-base leading-6 text-text-secondary outline-none resize-none transition-[border-color] duration-150 focus:border-high-contrast w-full',
-                    formik.touched.privateKey && formik.errors.privateKey
-                      ? 'border-error!'
-                      : 'border-neutral-100',
-                  )}
-                />
-                {formik.touched.privateKey && formik.errors.privateKey && (
-                  <span className="font-manrope font-normal text-xs leading-4 text-error pl-3">
-                    {formik.errors.privateKey}
-                  </span>
+            {isKeyPair ? (
+              <Textarea
+                label="Private Key"
+                name="privateKey"
+                value={formik.values.privateKey}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
+                placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"
+                className={cn(
+                  'bg-background border rounded-lg px-3.75 py-3.75 h-33 font-sans font-normal text-base leading-6 text-text-secondary outline-none resize-none transition-[border-color] duration-150 focus:border-high-contrast w-full',
+                  formik.touched.privateKey && formik.errors.privateKey
+                    ? 'border-error!'
+                    : 'border-neutral-100',
                 )}
-              </div>
+              />
             ) : (
-              <FormField
+              <TextInput
                 label="Password"
+                name="password"
+                type="password"
+                value={formik.values.password}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
+                placeholder="Enter password"
                 helperText="SSH password for authentication"
-                error={formik.touched.password ? formik.errors.password : undefined}
-              >
-                <FieldInput
-                  name="password"
-                  value={formik.values.password}
-                  onChange={formik.handleChange}
-                  onBlur={formik.handleBlur}
-                  placeholder="Enter password"
-                  type="password"
-                  hasError={formik.touched.password && !!formik.errors.password}
-                />
-              </FormField>
+                hasError={formik.touched.password && !!formik.errors.password}
+                errorMessage={formik.errors.password}
+              />
             )}
 
-            {authMethod === 'ssh-key' && (
+            {isKeyPair && (
               <div className="bg-[rgba(255,122,73,0.12)] border border-primary-darker rounded-lg p-3 flex flex-col gap-2">
                 <div className="flex items-center gap-1">
                   <WarningCircleIcon className="shrink-0 w-5 h-5" />
@@ -330,13 +207,13 @@ export function RemoteServerView({
               </p>
             )}
 
-            <button
+            <Button
               type="submit"
               disabled={isPending}
               className="w-full bg-secondary text-pure-white font-manrope font-bold text-sm leading-6 rounded-lg px-4 py-2 hover:opacity-[0.88] active:opacity-75 transition-opacity duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isPending ? 'Connecting…' : 'Connect & Continue'}
-            </button>
+            </Button>
           </form>
         </div>
       </Card>

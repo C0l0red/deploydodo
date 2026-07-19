@@ -31,6 +31,26 @@ impl FromRequestParts<Dependencies> for Auth {
     }
 }
 
+pub struct MaybeAuth(pub Option<User>);
+
+impl FromRequestParts<Dependencies> for MaybeAuth {
+    type Rejection = AppError;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        deps: &Dependencies,
+    ) -> Result<Self, Self::Rejection> {
+        match Auth::from_request_parts(parts, deps)
+            .await
+            .map(|auth| auth.0)
+        {
+            Ok(user) => Ok(MaybeAuth(Some(user))),
+            Err(AppError::Unauthorized) => Ok(MaybeAuth(None)),
+            Err(err) => Err(err),
+        }
+    }
+}
+
 /// This is an extractor for JSON requests, to clean up the response bodies to when there's a 422 error
 pub struct RequestJson<T>(pub T);
 

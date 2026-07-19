@@ -82,11 +82,10 @@ mod tests {
 
     // FIXME: Now that we have unit tests that ensure the types validate properly, do we still need tests like this?
     #[sqlx::test]
-    async fn create_admin_fails_if_name_is_missing(db: Pool<Postgres>) {
-        let app = App::register_create_admin(db).await;
+    fn create_admin_fails_if_name_is_missing(db: Pool<Postgres>) {
+        let app = App::register_route(db, post(create_admin)).await;
 
-        app.server
-            .post("/api/setup/admin")
+        app.post()
             .json(&json!({}))
             .await
             .assert_status_unprocessable_entity()
@@ -94,11 +93,10 @@ mod tests {
     }
 
     #[sqlx::test]
-    async fn create_admin_fails_if_email_is_missing(db: Pool<Postgres>) {
-        let app = App::register_create_admin(db).await;
+    fn create_admin_fails_if_email_is_missing(db: Pool<Postgres>) {
+        let app = App::register_route(db, post(create_admin)).await;
 
-        app.server
-            .post("/api/setup/admin")
+        app.post()
             .json(&json!({"name": "Test user"}))
             .await
             .assert_status_unprocessable_entity()
@@ -106,11 +104,10 @@ mod tests {
     }
 
     #[sqlx::test]
-    async fn create_admin_fails_if_password_is_missing(db: Pool<Postgres>) {
-        let app = App::register_create_admin(db).await;
+    fn create_admin_fails_if_password_is_missing(db: Pool<Postgres>) {
+        let app = App::register_route(db, post(create_admin)).await;
 
-        app.server
-            .post("/api/setup/admin")
+        app.post()
             .json(&json!({"name": "Test user", "email": "test@user.com"}))
             .await
             .assert_status_unprocessable_entity()
@@ -118,50 +115,41 @@ mod tests {
     }
 
     #[sqlx::test]
-    async fn create_admin_fails_if_name_is_blank(db: Pool<Postgres>) {
-        let app = App::register_create_admin(db).await;
+    fn create_admin_fails_if_name_is_blank(db: Pool<Postgres>) {
+        let app = App::register_route(db, post(create_admin)).await;
 
-        app.server
-            .post("/api/setup/admin")
-            .json(&json!({"name": "", "email": "test@user.com", "password": ""}))
+        app.post()
+            .json(&json!({"name": "", "email": "", "password": ""}))
             .await
-            .assert_status_unprocessable_entity()
+            .assert_status_bad_request()
             .assert_json_contains(&json!({
-                "message": "name: must not be empty"
+                "message": "Name is required"
             }));
     }
 
     #[sqlx::test]
-    async fn create_admin_fails_if_email_is_blank(db: Pool<Postgres>) {
-        let app = App::register_create_admin(db).await;
+    fn create_admin_fails_if_email_is_blank(db: Pool<Postgres>) {
+        let app = App::register_route(db, post(create_admin)).await;
 
-        app.server
-            .post("/api/setup/admin")
+        app.post()
             .json(&json!({"name": "Test user", "email": "", "password": ""}))
             .await
-            .assert_status_unprocessable_entity()
+            .assert_status_bad_request()
             .assert_json_contains(&json!({
-                "message": "email: must not be empty"
+                "message": "Email is required"
             }));
     }
 
     #[sqlx::test]
-    async fn create_admin_fails_if_password_is_blank(db: Pool<Postgres>) {
-        let app = App::register_create_admin(db).await;
+    fn create_admin_fails_if_password_is_blank(db: Pool<Postgres>) {
+        let app = App::register_route(db, post(create_admin)).await;
 
-        app.server
-            .post("/api/setup/admin")
+        app.post()
             .json(&json!({"name": "Test user", "email": "test@user.com", "password": ""}))
             .await
-            .assert_status_unprocessable_entity()
+            .assert_status_bad_request()
             .assert_json_contains(&json!({
-                "message": "password: must be at least 8 characters"
+                "message": "Password must be at least 8 characters"
             }));
-    }
-
-    impl App {
-        async fn register_create_admin(db: Pool<Postgres>) -> Self {
-            App::register_route(db, "/api/setup/admin", post(create_admin)).await
-        }
     }
 }

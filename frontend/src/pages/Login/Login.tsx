@@ -7,7 +7,7 @@ import { Button } from '@/components/Button'
 import { LogoIcon, EyeOpenIcon, EyeClosedIcon } from '@/assets/icons'
 import { useToast } from '@/components/Toast'
 import { setAuthToken } from '@/api/client'
-import { serversQuery } from '@/api/queries'
+import { invalidateValidateSessionQuery, serversQuery } from '@/api/queries'
 import { useLogin } from '@/api/mutations'
 
 export const LoginRoute = createLazyRoute('login')({
@@ -18,6 +18,7 @@ function Login() {
   const login = useLogin({
     onSuccess: async (data) => {
       setAuthToken(data.sessionToken)
+      await invalidateValidateSessionQuery()
       toast('Welcome back', 'success')
 
       const servers = await serversQuery()
