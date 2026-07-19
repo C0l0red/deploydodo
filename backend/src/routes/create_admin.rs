@@ -82,7 +82,7 @@ mod tests {
 
     // FIXME: Now that we have unit tests that ensure the types validate properly, do we still need tests like this?
     #[sqlx::test]
-    fn create_admin_fails_if_name_is_missing(db: Pool<Postgres>) {
+    async fn create_admin_fails_if_name_is_missing(db: Pool<Postgres>) {
         let app = App::register_route(db, post(create_admin)).await;
 
         app.post()
@@ -93,7 +93,7 @@ mod tests {
     }
 
     #[sqlx::test]
-    fn create_admin_fails_if_email_is_missing(db: Pool<Postgres>) {
+    async fn create_admin_fails_if_email_is_missing(db: Pool<Postgres>) {
         let app = App::register_route(db, post(create_admin)).await;
 
         app.post()
@@ -104,7 +104,7 @@ mod tests {
     }
 
     #[sqlx::test]
-    fn create_admin_fails_if_password_is_missing(db: Pool<Postgres>) {
+    async fn create_admin_fails_if_password_is_missing(db: Pool<Postgres>) {
         let app = App::register_route(db, post(create_admin)).await;
 
         app.post()
@@ -115,41 +115,41 @@ mod tests {
     }
 
     #[sqlx::test]
-    fn create_admin_fails_if_name_is_blank(db: Pool<Postgres>) {
+    async fn create_admin_fails_if_name_is_blank(db: Pool<Postgres>) {
         let app = App::register_route(db, post(create_admin)).await;
 
         app.post()
-            .json(&json!({"name": "", "email": "", "password": ""}))
+            .json(&json!({"name": "", "email": "test@user.com", "password": ""}))
             .await
-            .assert_status_bad_request()
+            .assert_status_unprocessable_entity()
             .assert_json_contains(&json!({
-                "message": "Name is required"
+                "message": "name: must not be empty"
             }));
     }
 
     #[sqlx::test]
-    fn create_admin_fails_if_email_is_blank(db: Pool<Postgres>) {
+    async fn create_admin_fails_if_email_is_blank(db: Pool<Postgres>) {
         let app = App::register_route(db, post(create_admin)).await;
 
         app.post()
             .json(&json!({"name": "Test user", "email": "", "password": ""}))
             .await
-            .assert_status_bad_request()
+            .assert_status_unprocessable_entity()
             .assert_json_contains(&json!({
-                "message": "Email is required"
+                "message": "email: must not be empty"
             }));
     }
 
     #[sqlx::test]
-    fn create_admin_fails_if_password_is_blank(db: Pool<Postgres>) {
+    async fn create_admin_fails_if_password_is_blank(db: Pool<Postgres>) {
         let app = App::register_route(db, post(create_admin)).await;
 
         app.post()
             .json(&json!({"name": "Test user", "email": "test@user.com", "password": ""}))
             .await
-            .assert_status_bad_request()
+            .assert_status_unprocessable_entity()
             .assert_json_contains(&json!({
-                "message": "Password must be at least 8 characters"
+                "message": "password: must be at least 8 characters"
             }));
     }
 }
