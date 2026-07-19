@@ -26,3 +26,23 @@ impl FromRequestParts<Dependencies> for Auth {
         Err(AppError::Unauthorized)
     }
 }
+
+pub struct MaybeAuth(pub Option<User>);
+
+impl FromRequestParts<Dependencies> for MaybeAuth {
+    type Rejection = AppError;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        deps: &Dependencies,
+    ) -> Result<Self, Self::Rejection> {
+        match Auth::from_request_parts(parts, deps)
+            .await
+            .map(|auth| auth.0)
+        {
+            Ok(user) => Ok(MaybeAuth(Some(user))),
+            Err(AppError::Unauthorized) => Ok(MaybeAuth(None)),
+            Err(err) => Err(err),
+        }
+    }
+}

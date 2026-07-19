@@ -1,45 +1,53 @@
 import { queryOptions, useQuery } from '@tanstack/react-query'
 import { api, handleQuery, queryClient } from '@/api/client'
 
-const statusQueryOptions = queryOptions({
+const statusOptions = queryOptions({
   queryKey: ['status'],
   queryFn: handleQuery(api.status),
 })
 
-export const statusQuery = () => queryClient.ensureQueryData(statusQueryOptions)
+export const statusQuery = () => queryClient.ensureQueryData(statusOptions)
 
 export const invalidateStatusQuery = () =>
   queryClient.invalidateQueries({
-    queryKey: statusQueryOptions.queryKey,
+    queryKey: statusOptions.queryKey,
     exact: true,
     refetchType: 'all',
   })
 
 export function useStatusQuery() {
-  return useQuery(statusQueryOptions)
+  return useQuery(statusOptions)
 }
 
-const serversQueryOptions = queryOptions({
+const serversOptions = queryOptions({
   queryKey: ['servers'],
   queryFn: handleQuery(api.listServers),
 })
 
 export const invalidateServersQuery = () =>
   queryClient.invalidateQueries({
-    queryKey: serversQueryOptions.queryKey,
+    queryKey: serversOptions.queryKey,
     exact: true,
     refetchType: 'all',
   })
 
-export const serversQuery = () => queryClient.ensureQueryData(serversQueryOptions)
+export const serversQuery = () => queryClient.ensureQueryData(serversOptions)
 
 export function useServersQuery() {
-  return useQuery(serversQueryOptions)
+  return useQuery(serversOptions)
 }
 
 const validateSessionOptions = queryOptions({
   queryKey: ['validateSession'],
   queryFn: handleQuery(api.validateSession),
+  staleTime: 5000,
 })
 
 export const validateSessionQuery = () => queryClient.ensureQueryData(validateSessionOptions)
+
+export const invalidateValidateSessionQuery = () =>
+  queryClient.invalidateQueries({
+    queryKey: validateSessionOptions.queryKey,
+    exact: true,
+    refetchType: 'all',
+  })

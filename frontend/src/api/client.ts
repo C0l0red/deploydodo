@@ -33,9 +33,7 @@ export function handleQuery<T>(fn: () => Promise<HttpResponse<T>>) {
   }
 }
 
-export async function handleMutation<T>(
-  fn: () => Promise<HttpResponse<T, HttpError>>,
-) {
+export async function handleMutation<T>(fn: () => Promise<HttpResponse<T, HttpError>>) {
   return fn()
     .then((response) => response.data)
     .catch((response) => {
