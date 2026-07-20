@@ -1,14 +1,16 @@
 use crate::new_types::HashedPassword;
+use crate::services::types::AccountType;
+use std::ops::Deref;
 use std::sync::Arc;
 
 use chrono::Utc;
 use rand_core::{OsRng, RngCore};
 use sqlx::PgPool;
 
-use crate::{
-    error::AppResult,
-    services::types::{AccountType, User},
-};
+use crate::services::user_service::UserId;
+use crate::error::AppResult;
+use crate::middleware::BearerToken;
+use crate::services::types::User;
 
 pub struct SessionService {
     db: Arc<PgPool>,
@@ -19,13 +21,31 @@ impl SessionService {
         Self { db }
     }
 
-    pub async fn get_session_user(&self, token: &str) -> AppResult<Option<User>> {
+    pub async fn create_session(&self, user_id: UserId) -> AppResult<String> {
+        let mut bytes = [0u8; 32];
+        OsRng.fill_bytes(&mut bytes);
+        let token = bytes.map(|b| format!("{b:02x}")).concat();
+
+        sqlx::query!(
+            "INSERT INTO auth_sessions (user_id, session_token, created_at) VALUES ($1, $2, $3)",
+            user_id.deref(),
+            &token,
+            Utc::now()
+        )
+        .execute(&*self.db)
+        .await?;
+
+        Ok(token)
+    }
+
+    // FIXME: Should this be here on in the user service? As it returns a user
+    pub async fn get_session_user(&self, token: &BearerToken) -> AppResult<Option<User>> {
         Ok(
             sqlx::query_as!(
                 User,
                 r#"
                 SELECT
-                    id,
+                    id AS "id: UserId",
                     name,
                     email,
                     created_at,
@@ -38,26 +58,9 @@ impl SessionService {
                     WHERE session_token = $1
                     LIMIT 1
                     )
-                "#, token)
+                "#, token.deref())
                 .fetch_optional(&*self.db)
                 .await?,
         )
-    }
-
-    pub async fn create_session(&self, user_id: i64) -> AppResult<String> {
-        let mut bytes = [0u8; 32];
-        OsRng.fill_bytes(&mut bytes);
-        let token = bytes.map(|b| format!("{b:02x}")).concat();
-
-        sqlx::query!(
-            "INSERT INTO auth_sessions (user_id, session_token, created_at) VALUES ($1, $2, $3)",
-            user_id,
-            &token,
-            Utc::now()
-        )
-        .execute(&*self.db)
-        .await?;
-
-        Ok(token)
     }
 }

@@ -20,7 +20,7 @@ impl FromRequestParts<Dependencies> for Auth {
         if let Some(bearer_token) = parts.extensions.get::<BearerToken>() {
             let user = deps
                 .session_service
-                .get_session_user(bearer_token.token())
+                .get_session_user(bearer_token)
                 .await?;
 
             if let Some(user) = user {

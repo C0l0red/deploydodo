@@ -7,7 +7,7 @@ use crate::extractors::RequestJson;
 use crate::new_types::{NonEmptyString, PlainPassword};
 use crate::services::types::VariableKey;
 use crate::{dependencies::Dependencies, services::types::AccountType};
-use crate::services::user_service::{NewUser, PasswordUtils};
+use crate::services::user_service::{NewUser, PasswordUtils, UserId};
 
 #[derive(Deserialize, ToSchema)]
 pub struct CreateAdminRequest {
@@ -18,7 +18,7 @@ pub struct CreateAdminRequest {
 
 #[derive(Serialize, ToSchema)]
 pub struct AdminResponse {
-    pub id: i64,
+    pub id: UserId,
     pub name: String,
     pub email: String,
     #[serde(rename = "accountType")]
@@ -51,18 +51,17 @@ pub async fn create_admin(
     let new_user = NewUser::admin(request, hashed_password);
     let user = deps.user_service.create_user(new_user).await?;
 
-    let user_id = user.id.unwrap();
-    let session_token = deps.session_service.create_session(user_id).await?;
+    let session_token = deps.session_service.create_session(user.id).await?;
     deps.variables_service
         .set_value(VariableKey::IsAdminOnboarded, true)
         .await?;
 
-    tracing::info!(email = %user.email, id = %user_id, "admin user created");
+    tracing::info!(email = %user.email, id = %user.id, "admin user created");
 
     Ok((
         StatusCode::CREATED,
         Json(AdminResponse {
-            id: user_id,
+            id: user.id,
             name: user.name,
             email: user.email,
             account_type: user.account_type,

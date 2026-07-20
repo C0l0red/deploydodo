@@ -35,7 +35,7 @@ entity_id! {
 entity! {
     #[derive(FromRow)]
     pub struct User {
-        id: Option<i64>,
+        id: UserId,
         name: String,
         email: String,
         password_hash: HashedPassword,
@@ -67,14 +67,6 @@ impl PasswordUtils {
     }
 }
 
-impl User {
-    pub fn get_id(&self) -> AppResult<i64> {
-        self.id.ok_or(AppError::InternalServerError(
-            "id is None in User type".to_string(),
-        ))
-    }
-}
-
 impl NewUser {
     pub fn admin(
         create_admin_request: CreateAdminRequest,
@@ -102,7 +94,7 @@ impl UserService {
             INSERT INTO users (name, email, password_hash, account_type, created_at)
             VALUES ($1, $2, $3, $4, $5)
             RETURNING
-                id,
+                id AS "id: UserId",
                 name,
                 email,
                 password_hash AS "password_hash: HashedPassword",
@@ -131,12 +123,12 @@ impl UserService {
             User,
             r#"
             SELECT 
-                id, 
-                name, 
-                email, 
-                password_hash AS "password_hash: HashedPassword", 
-                account_type AS "account_type: AccountType", 
-                created_at 
+                id AS "id: UserId",
+                name,
+                email,
+                password_hash AS "password_hash: HashedPassword",
+                account_type AS "account_type: AccountType",
+                created_at
             FROM users 
             WHERE email = $1
             "#,

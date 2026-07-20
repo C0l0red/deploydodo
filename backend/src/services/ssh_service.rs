@@ -32,7 +32,6 @@ impl AuthType {
 }
 
 entity_id! {
-    #[derive(Clone)]
     pub struct SshKeyId;
 }
 

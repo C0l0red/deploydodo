@@ -32,7 +32,6 @@ impl ServerType {
 
 // Create a macro for ID newtypes
 entity_id! {
-    #[derive(Copy, Clone)]
     pub struct ServerId;
 }
 

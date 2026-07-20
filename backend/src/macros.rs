@@ -191,7 +191,7 @@ macro_rules! entity_id {
     ) => {
         newtype! {
             $(#[$meta])*
-            #[derive(Debug, serde::Serialize)]
+            #[derive(Debug, serde::Serialize, Copy, Clone)]
             $vis struct $name(i64);
         }
 

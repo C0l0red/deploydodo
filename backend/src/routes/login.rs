@@ -43,7 +43,7 @@ pub async fn login(
 
     PasswordUtils::verify_password(&request.password, &user.password_hash)?;
 
-    let session_token = deps.session_service.create_session(user.get_id()?).await?;
+    let session_token = deps.session_service.create_session(user.id).await?;
 
     Ok((StatusCode::OK, Json(LoginResponse { session_token })))
 }

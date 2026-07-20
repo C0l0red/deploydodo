@@ -7,17 +7,14 @@ use axum::{
     response::Response,
 };
 use axum::http::header::AUTHORIZATION;
+use crate::impl_deref;
 
 const QUERY_TOKEN_KEY: &str = "token";
 
 #[derive(Clone)]
 pub struct BearerToken(String);
 
-impl BearerToken {
-    pub fn token(&self) -> &str {
-        self.0.as_ref()
-    }
-}
+impl_deref!(BearerToken, String);
 
 pub async fn bearer_auth(
     req: axum::http::Request<Body>,
