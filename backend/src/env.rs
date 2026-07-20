@@ -1,7 +1,7 @@
 use std::{fmt::Debug, str::FromStr, sync::Arc};
 
-use tokio::sync::OnceCell;
 use crate::new_types::ServerPort;
+use tokio::sync::OnceCell;
 
 #[derive(Debug)]
 pub struct Environment {

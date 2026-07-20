@@ -1,12 +1,12 @@
-use axum::{extract::FromRequestParts, http::request::Parts, Json};
-use axum::extract::{FromRequest, Request};
-use axum::extract::rejection::JsonRejection;
-use axum::response::{IntoResponse, Response};
-use axum_test::expect_json::__private::serde_trampoline::de::DeserializeOwned;
-use serde_json::json;
 use crate::{
     dependencies::Dependencies, error::AppError, middleware::BearerToken, services::types::User,
 };
+use axum::extract::rejection::JsonRejection;
+use axum::extract::{FromRequest, Request};
+use axum::response::{IntoResponse, Response};
+use axum::{extract::FromRequestParts, http::request::Parts, Json};
+use axum_test::expect_json::__private::serde_trampoline::de::DeserializeOwned;
+use serde_json::json;
 
 pub struct Auth(pub User);
 
@@ -82,7 +82,7 @@ where
                     let json = json!({"message": message});
 
                     (err.status(), Json(json)).into_response()
-                },
+                }
                 err => (err.status(), Json(json!({"message": err.body_text()}))).into_response(),
             })
     }

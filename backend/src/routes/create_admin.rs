@@ -4,8 +4,8 @@ use utoipa::ToSchema;
 
 use crate::error::{AppError, AppResult};
 use crate::extractors::RequestJson;
-use crate::services::types::VariableKey;
 use crate::new_types::{NonEmptyString, PlainPassword};
+use crate::services::types::VariableKey;
 use crate::{dependencies::Dependencies, services::types::AccountType};
 
 #[derive(Deserialize, ToSchema)]
@@ -78,7 +78,6 @@ mod tests {
     use crate::test::App;
 
     use super::create_admin;
-
 
     // FIXME: Now that we have unit tests that ensure the types validate properly, do we still need tests like this?
     #[sqlx::test]

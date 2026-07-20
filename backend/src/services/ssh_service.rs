@@ -2,14 +2,20 @@ use crate::impl_display_via_to_string;
 use std::ops::Deref;
 use std::sync::Arc;
 
+use crate::new_types::{SshPrivateKey, SshPublicKey};
+use crate::routes::create_remote_server::SshAuthRequest;
+use crate::{
+    entity, entity_id,
+    env::get_env,
+    error::{AppError, AppResult},
+    impl_deref, impl_deserialize_via_try_new, newtype,
+    services::server_service::Server,
+};
 use chrono::{DateTime, Utc};
+use dodosh::SshAuth;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use utoipa::ToSchema;
-use dodosh::SshAuth;
-use crate::new_types::{SshPrivateKey, SshPublicKey};
-use crate::routes::create_remote_server::SshAuthRequest;
-use crate::{entity, entity_id, env::get_env, error::{AppError, AppResult}, impl_deref, newtype, impl_deserialize_via_try_new, services::server_service::Server};
 
 #[derive(Debug, Serialize, Deserialize, ToSchema, sqlx::Type, Clone)]
 #[serde(rename_all = "lowercase")]
@@ -162,7 +168,9 @@ impl<'a> SshKey {
 
     pub fn username(&self) -> String {
         match self {
-            SshKey::Password { username, .. } | SshKey::KeyPair { username, .. } => username.to_owned(),
+            SshKey::Password { username, .. } | SshKey::KeyPair { username, .. } => {
+                username.to_owned()
+            }
         }
     }
 }
@@ -245,7 +253,7 @@ impl SshService {
         )
         .fetch_optional(&*self.db)
         .await?
-            .ok_or(AppError::Validation("SSH key not found".into()))?;
+        .ok_or(AppError::Validation("SSH key not found".into()))?;
 
         Ok(SshKey::try_from(ssh_key_row)?)
     }

@@ -7,10 +7,10 @@ use utoipa::ToSchema;
 use crate::dependencies::Dependencies;
 use crate::error::{AppError, AppResult};
 use crate::extractors::{Auth, RequestJson};
-use crate::services::ssh_service::{NewSshKeyRow};
-use crate::services::types::{JobStatus, JobType};
 use crate::new_types::{NonEmptyString, ServerPort, SshPrivateKey, SshPublicKey};
 use crate::services::server_service::NewServerRow;
+use crate::services::ssh_service::NewSshKeyRow;
+use crate::services::types::{JobStatus, JobType};
 // ── SSH auth sub-types ────────────────────────────────────────────────────────
 
 #[derive(Deserialize, ToSchema)]
@@ -32,7 +32,9 @@ pub enum SshAuthRequest {
 impl SshAuthRequest {
     pub fn get_username(&self) -> String {
         match self {
-            Self::Password { username, .. } | Self::KeyPair { username, .. } => username.to_string(),
+            Self::Password { username, .. } | Self::KeyPair { username, .. } => {
+                username.to_string()
+            }
         }
     }
 
@@ -241,11 +243,9 @@ async fn handle_remote(
     let new_ssh_key_row = NewSshKeyRow::new(key_name, auth);
     let ssh_key = deps.ssh_service.create_ssh_key(new_ssh_key_row).await?;
 
-    let new_server_row = NewServerRow::remote_server(name.clone(), hostname.clone(), port, ssh_key.id());
-    let server = deps
-        .server_service
-        .create_server(new_server_row)
-        .await?;
+    let new_server_row =
+        NewServerRow::remote_server(name.clone(), hostname.clone(), port, ssh_key.id());
+    let server = deps.server_service.create_server(new_server_row).await?;
 
     tracing::info!(id = %server.id(), ssh_key_id = %ssh_key.id(), "remote server created");
 

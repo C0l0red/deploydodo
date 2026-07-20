@@ -1,10 +1,10 @@
-use std::ops::Deref;
 use dodosh::terminal::TermSize;
 use dodosh::{terminal, SshTimeout};
+use std::ops::Deref;
 
 use crate::dependencies::Dependencies;
 use crate::error::AppResult;
-use crate::routes::terminal::{TerminalParams};
+use crate::routes::terminal::TerminalParams;
 use crate::services::server_service::ServerId;
 
 pub async fn terminal_init(

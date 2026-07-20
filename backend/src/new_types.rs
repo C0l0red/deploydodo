@@ -1,12 +1,12 @@
+use crate::env::TypeName;
 use crate::error::AppError;
 use crate::{impl_deref, impl_deserialize_via_try_new, impl_sqlx_type_via, newtype};
+use serde::Serialize;
 use std::fmt::Display;
 use std::num::NonZeroU16;
 use std::str::FromStr;
-use serde::Serialize;
 use url::Host;
 use utoipa::ToSchema;
-use crate::env::TypeName;
 
 newtype! {
     // FIXME: We probably don't want the password being debugable
@@ -92,8 +92,7 @@ impl Hostname {
     pub fn try_new(value: impl Into<String>) -> Result<Self, AppError> {
         let value = value.into().trim().to_owned();
 
-        Host::parse(&value)
-            .map_err(|_| AppError::Validation("must be a valid host".into()))?;
+        Host::parse(&value).map_err(|_| AppError::Validation("must be a valid host".into()))?;
 
         Ok(Self(value))
     }
@@ -131,13 +130,13 @@ newtype! {
     pub struct SshPrivateKey(NonEmptyString);
 }
 
-
 impl SshPrivateKey {
     pub fn try_new(value: impl Into<String>) -> Result<Self, AppError> {
         let value = NonEmptyString::try_new(value)?;
-        if !value.starts_with("-----BEGIN")
-        {
-            return Err(AppError::Validation("must be a valid SSH private key".into()));
+        if !value.starts_with("-----BEGIN") {
+            return Err(AppError::Validation(
+                "must be a valid SSH private key".into(),
+            ));
         }
 
         Ok(Self(value))
@@ -168,10 +167,7 @@ mod tests {
         let err = serde_json::from_str::<PlainPassword>(r#""short""#)
             .expect_err("passwords shorter than 8 chars must be rejected");
 
-        assert_eq!(
-            err.to_string(),
-            "must be at least 8 characters"
-        );
+        assert_eq!(err.to_string(), "must be at least 8 characters");
     }
 
     #[test]
@@ -183,8 +179,7 @@ mod tests {
 
     #[test]
     fn server_port_rejects_zero() {
-        let err = serde_json::from_str::<ServerPort>("0")
-            .expect_err("port 0 must be rejected");
+        let err = serde_json::from_str::<ServerPort>("0").expect_err("port 0 must be rejected");
 
         assert_eq!(err.to_string(), "must be between 1 and 65535");
     }

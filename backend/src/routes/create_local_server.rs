@@ -5,9 +5,9 @@ use utoipa::ToSchema;
 use crate::dependencies::Dependencies;
 use crate::error::{AppError, AppResult};
 use crate::extractors::{Auth, RequestJson};
-use crate::services::types::{self, VariableKey};
 use crate::new_types::{NonEmptyString, ServerPort};
 use crate::services::server_service::NewServerRow;
+use crate::services::types::{self, VariableKey};
 
 #[derive(Deserialize, ToSchema)]
 pub struct CreateLocalServerRequest {
@@ -49,10 +49,7 @@ pub async fn create_local_server(
     }
 
     let new_server_row = NewServerRow::local_server(request.name.clone());
-    let server = deps
-        .server_service
-        .create_server(new_server_row)
-        .await?;
+    let server = deps.server_service.create_server(new_server_row).await?;
 
     tracing::info!(id = %server.id(), "local server created");
 
