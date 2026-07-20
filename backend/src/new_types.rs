@@ -9,8 +9,6 @@ use url::Host;
 use utoipa::ToSchema;
 
 newtype! {
-    // FIXME: We probably don't want the password being debugable
-    #[derive(Debug)]
     pub struct PlainPassword(String);
 }
 
@@ -159,7 +157,7 @@ impl SshPrivateKey {
 
 #[cfg(test)]
 mod tests {
-    use crate::new_types::{Hostname, NonEmptyString, PlainPassword, ServerPort};
+    use crate::new_types::{Hostname, NonEmptyString, PlainPassword, ServerPort, HashedPassword, SshPublicKey, SshPrivateKey};
 
     #[test]
     fn non_empty_string_rejects_blank_values() {
@@ -178,9 +176,9 @@ mod tests {
 
     #[test]
     fn password_rejects_short_values() {
-        let err = serde_json::from_str::<PlainPassword>(r#""short""#)
-            .expect_err("passwords shorter than 8 chars must be rejected");
-
+        let res = serde_json::from_str::<PlainPassword>(r#""short""#);
+        assert!(res.is_err(), "passwords shorter than 8 chars must be rejected");
+        let err = res.err().unwrap();
         assert_eq!(err.to_string(), "must be at least 8 characters");
     }
 
@@ -212,5 +210,44 @@ mod tests {
         Hostname::try_new("https://google.com").expect_err("Full URL must be rejected");
         Hostname::try_new("").expect_err("Empty host must be rejected");
         Hostname::try_new("abc").expect("Could not parse IPv4");
+    }
+
+    // Additional tests for other new types
+    #[test]
+    fn hashed_password_rejects_invalid_hash() {
+        let res = HashedPassword::try_new("not-a-valid-hash");
+        assert!(res.is_err(), "invalid hash must be rejected");
+        assert_eq!(res.err().unwrap().to_string(), "could not parse: Password hash");
+    }
+
+    #[test]
+    fn hashed_password_accepts_valid_argon2_hash() {
+        // This is a minimal, syntactically valid Argon2id hash string
+        let hash = "$argon2id$v=19$m=65536,t=3,p=4$c29tZXNhbHQ$c29tZWNoZWNrc3Vt";
+        HashedPassword::try_new(hash).expect("valid argon2 hash should be accepted");
+    }
+
+    #[test]
+    fn ssh_public_key_rejects_empty() {
+        let res = serde_json::from_str::<SshPublicKey>(r#"""#);
+        assert!(res.is_err(), "empty public key must be rejected");
+    }
+
+    #[test]
+    fn ssh_public_key_accepts_non_empty() {
+        let key = serde_json::from_str::<SshPublicKey>(r#""ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCs""#).unwrap();
+        assert!(!key.as_str().is_empty());
+    }
+
+    #[test]
+    fn ssh_private_key_rejects_invalid() {
+        let res = serde_json::from_str::<SshPrivateKey>(r#""not-a-key""#);
+        assert!(res.is_err(), "invalid private key must be rejected");
+    }
+
+    #[test]
+    fn ssh_private_key_accepts_pem_like() {
+        let pem = r#""-----BEGIN OPENSSH PRIVATE KEY-----\n-----END OPENSSH PRIVATE KEY-----""#;
+        serde_json::from_str::<SshPrivateKey>(pem).expect("valid-looking key should be accepted");
     }
 }
