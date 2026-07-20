@@ -121,9 +121,13 @@ mod test {
     use crate::services::UserService;
     use std::sync::Arc;
 
+    fn make_user_service(pool: &sqlx::PgPool) -> UserService {
+        UserService::new(Arc::new(pool.clone()))
+    }
+
     #[sqlx::test]
     async fn create_user_persists_a_user(pool: sqlx::PgPool) {
-        let user_service = UserService::new(Arc::new(pool.clone()));
+        let user_service = make_user_service(&pool);
         let password_hash = HashedPassword::hash(&"test_password".into()).expect("Failed to hash password");
         let new_user = NewUser {
             name: "test".to_string(),
@@ -159,7 +163,7 @@ mod test {
 
     #[sqlx::test(fixtures(path = "../../tests/fixtures", scripts("users")))]
     async fn count_users_counts_rows_from_fixtures(pool: sqlx::PgPool) {
-        let user_service = UserService::new(Arc::new(pool.clone()));
+        let user_service = make_user_service(&pool);
 
         let count = user_service.count_users().await.unwrap();
 
@@ -169,7 +173,7 @@ mod test {
     // Verify an existing user can be fetched by email
     #[sqlx::test(fixtures(path = "../../tests/fixtures", scripts("users")))]
     async fn get_by_email_returns_user_when_present(pool: sqlx::PgPool) {
-        let user_service = UserService::new(Arc::new(pool.clone()));
+        let user_service = make_user_service(&pool);
 
         let found = user_service
             .get_by_email("ada@example.com")
@@ -185,7 +189,7 @@ mod test {
     // Unknown email should return None
     #[sqlx::test(fixtures(path = "../../tests/fixtures", scripts("users")))]
     async fn get_by_email_returns_none_for_unknown(pool: sqlx::PgPool) {
-        let user_service = UserService::new(Arc::new(pool.clone()));
+        let user_service = make_user_service(&pool);
 
         let found = user_service
             .get_by_email("nobody@example.com")

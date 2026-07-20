@@ -279,14 +279,19 @@ mod test {
     use std::sync::Arc;
     use crate::new_types::NonEmptyString;
 
+    fn make_service(pool: &PgPool) -> SshService {
+        SshService {
+            db: Arc::new(pool.clone()),
+            host_ssh_username: "tester".into(),
+            host_ssh_private_key:
+                "-----BEGIN OPENSSH PRIVATE KEY-----\n-----END OPENSSH PRIVATE KEY-----".into(),
+        }
+    }
+
     #[sqlx::test]
     async fn create_ssh_key_inserts_password_ssh_keys(pool: PgPool) {
         // Construct service without invoking env helpers
-        let service = SshService {
-            db: Arc::new(pool.clone()),
-            host_ssh_username: "tester".into(),
-            host_ssh_private_key: "-----BEGIN OPENSSH PRIVATE KEY-----\n-----END OPENSSH PRIVATE KEY-----".into(),
-        };
+        let service = make_service(&pool);
 
         let req = SshAuthRequest::Password {
             username: NonEmptyString::try_new("alice").unwrap(),
@@ -308,11 +313,7 @@ mod test {
 
     #[sqlx::test]
     async fn create_ssh_key_inserts_keypair_ssh_keys(pool: PgPool) {
-        let service = SshService {
-            db: Arc::new(pool.clone()),
-            host_ssh_username: "tester".into(),
-            host_ssh_private_key: "-----BEGIN OPENSSH PRIVATE KEY-----\n-----END OPENSSH PRIVATE KEY-----".into(),
-        };
+        let service = make_service(&pool);
 
         let pem = "-----BEGIN OPENSSH PRIVATE KEY-----\n-----END OPENSSH PRIVATE KEY-----";
         let req = SshAuthRequest::KeyPair {
@@ -340,11 +341,7 @@ mod test {
 
     #[sqlx::test(fixtures(path = "../../tests/fixtures", scripts("ssh_keys")))]
     async fn get_key_by_id_returns_existing_ssh_key(pool: PgPool) {
-        let service = SshService {
-            db: Arc::new(pool.clone()),
-            host_ssh_username: "tester".into(),
-            host_ssh_private_key: "-----BEGIN OPENSSH PRIVATE KEY-----\n-----END OPENSSH PRIVATE KEY-----".into(),
-        };
+        let service = make_service(&pool);
 
         // Look up the id of the seeded key by name
         let id: i64 = sqlx::query_scalar!("SELECT id FROM ssh_keys WHERE name = $1", "pw-fixture")
@@ -365,11 +362,7 @@ mod test {
 
     #[sqlx::test(fixtures(path = "../../tests/fixtures", scripts("ssh_keys")))]
     async fn get_key_by_id_returns_error_for_unknown_id(pool: PgPool) {
-        let service = SshService {
-            db: Arc::new(pool),
-            host_ssh_username: "tester".into(),
-            host_ssh_private_key: "-----BEGIN OPENSSH PRIVATE KEY-----\n-----END OPENSSH PRIVATE KEY-----".into(),
-        };
+        let service = make_service(&pool);
 
         let res = service.get_key_by_id(&SshKeyId::try_new(9_999_999).unwrap()).await;
         assert!(res.is_err(), "should error for unknown id");
@@ -378,11 +371,7 @@ mod test {
 
     #[sqlx::test]
     async fn get_key_for_server_uses_env_for_local(pool: PgPool) {
-        let service = SshService {
-            db: Arc::new(pool),
-            host_ssh_username: "tester".into(),
-            host_ssh_private_key: "-----BEGIN OPENSSH PRIVATE KEY-----\n-----END OPENSSH PRIVATE KEY-----".into(),
-        };
+        let service = make_service(&pool);
 
         let server = Server::Local {
             id: ServerId::try_new(1).unwrap(),
@@ -401,11 +390,7 @@ mod test {
 
     #[sqlx::test(fixtures(path = "../../tests/fixtures", scripts("ssh_keys")))]
     async fn get_key_for_server_fetches_for_remote(pool: PgPool) {
-        let service = SshService {
-            db: Arc::new(pool.clone()),
-            host_ssh_username: "tester".into(),
-            host_ssh_private_key: "-----BEGIN OPENSSH PRIVATE KEY-----\n-----END OPENSSH PRIVATE KEY-----".into(),
-        };
+        let service = make_service(&pool);
 
         let id: i64 = sqlx::query_scalar!("SELECT id FROM ssh_keys WHERE name = $1", "kp-fixture")
             .fetch_one(&pool)
