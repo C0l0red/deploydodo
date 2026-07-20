@@ -270,3 +270,164 @@ impl SshService {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::routes::create_remote_server::SshAuthRequest;
+    use crate::services::server_service::{Server, ServerId};
+    use std::sync::Arc;
+    use crate::new_types::NonEmptyString;
+
+    #[sqlx::test]
+    async fn create_ssh_key_inserts_password_ssh_keys(pool: PgPool) {
+        // Construct service without invoking env helpers
+        let service = SshService {
+            db: Arc::new(pool.clone()),
+            host_ssh_username: "tester".into(),
+            host_ssh_private_key: "-----BEGIN OPENSSH PRIVATE KEY-----\n-----END OPENSSH PRIVATE KEY-----".into(),
+        };
+
+        let req = SshAuthRequest::Password {
+            username: NonEmptyString::try_new("alice").unwrap(),
+            password: NonEmptyString::try_new("s3cretpass").unwrap(),
+        };
+        let new_row = NewSshKeyRow::new("pw-key".to_string(), req);
+
+        let created = service.create_ssh_key(new_row).await.unwrap();
+
+        match created {
+            SshKey::Password { name, username, password, .. } => {
+                assert_eq!(name, "pw-key");
+                assert_eq!(username, "alice");
+                assert_eq!(password, "s3cretpass");
+            }
+            _ => panic!("expected password variant"),
+        }
+    }
+
+    #[sqlx::test]
+    async fn create_ssh_key_inserts_keypair_ssh_keys(pool: PgPool) {
+        let service = SshService {
+            db: Arc::new(pool.clone()),
+            host_ssh_username: "tester".into(),
+            host_ssh_private_key: "-----BEGIN OPENSSH PRIVATE KEY-----\n-----END OPENSSH PRIVATE KEY-----".into(),
+        };
+
+        let pem = "-----BEGIN OPENSSH PRIVATE KEY-----\n-----END OPENSSH PRIVATE KEY-----";
+        let req = SshAuthRequest::KeyPair {
+            username: NonEmptyString::try_new("bob").unwrap(),
+            private_key: SshPrivateKey::try_new(pem).unwrap(),
+            public_key: Some(SshPublicKey::try_new(
+                "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCs",
+            )
+            .unwrap()),
+        };
+        let new_row = NewSshKeyRow::new("kp-key".to_string(), req);
+
+        let created = service.create_ssh_key(new_row).await.unwrap();
+
+        match created {
+            SshKey::KeyPair { name, username, private_key, public_key, .. } => {
+                assert_eq!(name, "kp-key");
+                assert_eq!(username, "bob");
+                assert!(private_key.as_str().starts_with("-----BEGIN"));
+                assert!(public_key.is_some());
+            }
+            _ => panic!("expected keypair variant"),
+        }
+    }
+
+    #[sqlx::test(fixtures(path = "../../tests/fixtures", scripts("ssh_keys")))]
+    async fn get_key_by_id_returns_existing_ssh_key(pool: PgPool) {
+        let service = SshService {
+            db: Arc::new(pool.clone()),
+            host_ssh_username: "tester".into(),
+            host_ssh_private_key: "-----BEGIN OPENSSH PRIVATE KEY-----\n-----END OPENSSH PRIVATE KEY-----".into(),
+        };
+
+        // Look up the id of the seeded key by name
+        let id: i64 = sqlx::query_scalar!("SELECT id FROM ssh_keys WHERE name = $1", "pw-fixture")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        let key = service.get_key_by_id(&SshKeyId(id)).await.unwrap();
+
+        match key {
+            SshKey::Password { name, username, password, .. } => {
+                assert_eq!(name, "pw-fixture");
+                assert_eq!(username, "ada");
+                assert_eq!(password, "hunter2");
+            }
+            _ => panic!("expected password variant"),
+        }
+    }
+
+    #[sqlx::test(fixtures(path = "../../tests/fixtures", scripts("ssh_keys")))]
+    async fn get_key_by_id_returns_error_for_unknown_id(pool: PgPool) {
+        let service = SshService {
+            db: Arc::new(pool),
+            host_ssh_username: "tester".into(),
+            host_ssh_private_key: "-----BEGIN OPENSSH PRIVATE KEY-----\n-----END OPENSSH PRIVATE KEY-----".into(),
+        };
+
+        let res = service.get_key_by_id(&SshKeyId::try_new(9_999_999).unwrap()).await;
+        assert!(res.is_err(), "should error for unknown id");
+        assert!(res.err().unwrap().to_string().contains("SSH key not found"));
+    }
+
+    #[sqlx::test]
+    async fn get_key_for_server_uses_env_for_local(pool: PgPool) {
+        let service = SshService {
+            db: Arc::new(pool),
+            host_ssh_username: "tester".into(),
+            host_ssh_private_key: "-----BEGIN OPENSSH PRIVATE KEY-----\n-----END OPENSSH PRIVATE KEY-----".into(),
+        };
+
+        let server = Server::Local {
+            id: ServerId::try_new(1).unwrap(),
+            name: "local".into(),
+        };
+        let key = service.get_key_for_server(&server).await.unwrap();
+
+        match key {
+            SshKey::KeyPair { username, private_key, .. } => {
+                assert_eq!(username, "tester");
+                assert!(private_key.as_str().starts_with("-----BEGIN"));
+            }
+            _ => panic!("expected keypair for local server"),
+        }
+    }
+
+    #[sqlx::test(fixtures(path = "../../tests/fixtures", scripts("ssh_keys")))]
+    async fn get_key_for_server_fetches_for_remote(pool: PgPool) {
+        let service = SshService {
+            db: Arc::new(pool.clone()),
+            host_ssh_username: "tester".into(),
+            host_ssh_private_key: "-----BEGIN OPENSSH PRIVATE KEY-----\n-----END OPENSSH PRIVATE KEY-----".into(),
+        };
+
+        let id: i64 = sqlx::query_scalar!("SELECT id FROM ssh_keys WHERE name = $1", "kp-fixture")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+
+        // Construct a remote server referencing the seeded ssh key id
+        let server = Server::Remote {
+            id: ServerId::try_new(2).unwrap(),
+            name: "remote".into(),
+            hostname: "example.com".into(),
+            ssh_port: "22".parse().unwrap(),
+            ssh_key_id: SshKeyId::try_new(id).unwrap(),
+        };
+
+        let key = service.get_key_for_server(&server).await.unwrap();
+        match key {
+            SshKey::KeyPair { name, username, .. } => {
+                assert_eq!(name, "kp-fixture");
+                assert_eq!(username, "grace");
+            }
+            _ => panic!("expected keypair for remote server"),
+        }
+    }
+}

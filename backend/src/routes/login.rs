@@ -1,14 +1,13 @@
-use argon2::PasswordVerifier;
 use axum::{extract::State, http::StatusCode, Json};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
+use crate::extractors::RequestJson;
+use crate::new_types::{NonEmptyString, PlainPassword};
 use crate::{
     dependencies::Dependencies,
     error::{AppError, AppResult},
 };
-use crate::extractors::RequestJson;
-use crate::new_types::{HashedPassword, NonEmptyString, PlainPassword};
 
 #[derive(Deserialize, ToSchema)]
 pub struct LoginRequest {
