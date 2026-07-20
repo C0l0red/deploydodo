@@ -6,11 +6,14 @@ use crate::{
     dependencies::Dependencies,
     error::{AppError, AppResult},
 };
+use crate::extractors::RequestJson;
+use crate::new_types::{NonEmptyString, PlainPassword};
+use crate::services::user_service::PasswordUtils;
 
 #[derive(Deserialize, ToSchema)]
 pub struct LoginRequest {
-    pub email: String,
-    pub password: String,
+    pub email: NonEmptyString,
+    pub password: PlainPassword,
 }
 
 #[derive(Serialize, ToSchema)]
@@ -30,7 +33,7 @@ pub struct LoginResponse {
 )]
 pub async fn login(
     State(deps): State<Dependencies>,
-    Json(request): Json<LoginRequest>,
+    RequestJson(request): RequestJson<LoginRequest>,
 ) -> AppResult<(StatusCode, Json<LoginResponse>)> {
     let user = deps
         .user_service
@@ -38,7 +41,7 @@ pub async fn login(
         .await?
         .ok_or(AppError::InvalidCredentials)?;
 
-    user.verify_password(&request.password)?;
+    PasswordUtils::verify_password(&request.password, &user.password_hash)?;
 
     let session_token = deps.session_service.create_session(user.get_id()?).await?;
 

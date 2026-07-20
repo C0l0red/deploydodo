@@ -1,3 +1,4 @@
+use crate::new_types::HashedPassword;
 use std::sync::Arc;
 
 use chrono::Utc;
@@ -20,7 +21,24 @@ impl SessionService {
 
     pub async fn get_session_user(&self, token: &str) -> AppResult<Option<User>> {
         Ok(
-            sqlx::query_as!(User, r#"SELECT id, name, email, created_at, password_hash, account_type AS "account_type: AccountType" FROM users WHERE id = (SELECT user_id FROM auth_sessions WHERE session_token = $1 LIMIT 1)"#, token)
+            sqlx::query_as!(
+                User,
+                r#"
+                SELECT
+                    id,
+                    name,
+                    email,
+                    created_at,
+                    password_hash AS "password_hash: HashedPassword",
+                    account_type AS "account_type: AccountType"
+                FROM users
+                WHERE id = (
+                    SELECT user_id
+                    FROM auth_sessions
+                    WHERE session_token = $1
+                    LIMIT 1
+                    )
+                "#, token)
                 .fetch_optional(&*self.db)
                 .await?,
         )

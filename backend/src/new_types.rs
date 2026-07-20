@@ -1,5 +1,6 @@
 use crate::error::AppError;
 use crate::{impl_deref, impl_deserialize_via_try_new, impl_sqlx_type_via, newtype};
+use argon2::password_hash::Encoding;
 use serde::Serialize;
 use std::fmt::Display;
 use std::num::NonZeroU16;
@@ -15,13 +16,33 @@ newtype! {
 
 impl PlainPassword {
     fn try_new(value: impl Into<String>) -> Result<Self, AppError> {
-        let value = value.into().trim().to_string();
+        let value = value.into().to_string();
 
         if value.len() < 8 {
             return Err(AppError::Validation("must be at least 8 characters".into()));
         }
 
         Ok(Self(value))
+    }
+}
+
+newtype! {
+    pub struct HashedPassword(String);
+}
+
+impl HashedPassword {
+    pub fn try_new(value: impl Into<String>) -> Result<Self, AppError> {
+        let value = value.into().to_string();
+        argon2::PasswordHash::parse(value.as_str(), Encoding::default())
+            .map_err(|_| AppError::CouldNotParse("Password hash".to_string()))?;
+
+        Ok(Self(value))
+    }
+}
+
+impl From<argon2::PasswordHash<'_>> for HashedPassword {
+    fn from(value: argon2::PasswordHash) -> Self {
+        Self(value.to_string())
     }
 }
 
@@ -65,7 +86,6 @@ impl FromStr for ServerPort {
             .map(Self)
     }
 }
-
 
 impl ServerPort {
     pub fn try_new(value: impl Into<u16>) -> Result<Self, AppError> {

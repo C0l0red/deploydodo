@@ -7,6 +7,7 @@ use crate::extractors::RequestJson;
 use crate::new_types::{NonEmptyString, PlainPassword};
 use crate::services::types::VariableKey;
 use crate::{dependencies::Dependencies, services::types::AccountType};
+use crate::services::user_service::{NewUser, PasswordUtils};
 
 #[derive(Deserialize, ToSchema)]
 pub struct CreateAdminRequest {
@@ -46,7 +47,9 @@ pub async fn create_admin(
         return Err(AppError::AdminAlreadyConfigured);
     }
 
-    let user = deps.user_service.create_user(request.into()).await?;
+    let hashed_password = PasswordUtils::hash_password(&request.password)?;
+    let new_user = NewUser::admin(request, hashed_password);
+    let user = deps.user_service.create_user(new_user).await?;
 
     let user_id = user.id.unwrap();
     let session_token = deps.session_service.create_session(user_id).await?;

@@ -32,7 +32,7 @@ pub struct ServerResponse {
     tag = "servers"
 )]
 pub async fn list_servers(
-    _: Auth,
+    _: Auth, //FIXME: This is a code smell
     State(deps): State<Dependencies>,
 ) -> AppResult<(StatusCode, Json<Vec<ServerResponse>>)> {
     let servers = deps.server_service.list_servers().await?;
