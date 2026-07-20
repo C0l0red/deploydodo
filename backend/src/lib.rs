@@ -9,4 +9,5 @@ pub mod routes;
 pub mod services;
 #[cfg(test)]
 pub mod test;
-pub mod validation;
+pub mod new_types;
+pub mod macros;

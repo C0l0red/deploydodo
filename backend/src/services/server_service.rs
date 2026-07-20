@@ -9,6 +9,7 @@ use crate::{
     env::get_env,
     error::{AppError, AppResult},
 };
+use crate::services::ssh_service::SshKeyId;
 
 #[derive(Debug, Serialize, Deserialize, ToSchema, sqlx::Type, Clone, PartialEq)]
 #[serde(rename_all = "lowercase")]
@@ -31,7 +32,7 @@ pub enum Server {
         name: String,
         hostname: String,
         ssh_port: u16,
-        ssh_key_id: i64,
+        ssh_key_id: SshKeyId,
     },
     Local {
         id: i64,

@@ -57,6 +57,9 @@ pub enum AppError {
 
     #[error("docker operation error: {0}")]
     DockerOperation(String),
+
+    #[error("could not parse: {0}")]
+    CouldNotParse(String),
 }
 
 impl AppError {
@@ -78,6 +81,7 @@ impl AppError {
             AppError::InvalidCredentials => self.to_string(),
             AppError::LocalServerAlreadyExists => self.to_string(),
             AppError::MissingKeySecret => self.to_string(),
+            AppError::CouldNotParse(message) => message.to_string(),
         }
     }
 }
@@ -152,6 +156,7 @@ impl IntoResponse for AppError {
                 tracing::error!("docker operation error: {e}");
                 (StatusCode::INTERNAL_SERVER_ERROR, self.to_string())
             }
+            AppError::CouldNotParse(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg.to_string()),
         };
 
         (status, Json(json!({ "message": message }))).into_response()

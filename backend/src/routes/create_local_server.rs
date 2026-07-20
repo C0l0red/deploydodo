@@ -6,7 +6,7 @@ use crate::dependencies::Dependencies;
 use crate::error::{AppError, AppResult};
 use crate::extractors::{Auth, RequestJson};
 use crate::services::types::{self, VariableKey};
-use crate::validation::NonEmptyString;
+use crate::new_types::NonEmptyString;
 
 #[derive(Deserialize, ToSchema)]
 pub struct CreateLocalServerRequest {

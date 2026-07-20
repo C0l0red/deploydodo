@@ -55,6 +55,8 @@ impl JobService {
         }
     }
 
+    // FIXME: This seems counterintuitive, creating an empty job before any meaning is ascribed to it.
+    // I get why it's done this way, but I wonder if there's a better way to do this
     pub async fn create_job(&self, job_type: JobType) -> AppResult<String> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();

@@ -1,15 +1,14 @@
+use std::ops::Deref;
 use std::sync::Arc;
 
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use utoipa::ToSchema;
 
-use crate::{
-    env::get_env,
-    error::{AppError, AppResult},
-    services::server_service::Server,
-};
+use crate::new_types::{SshPrivateKey, SshPublicKey};
+use crate::routes::create_remote_server::SshAuthRequest;
+use crate::{entity, env::get_env, error::{AppError, AppResult}, impl_deref, services::server_service::Server};
 
 #[derive(Debug, Serialize, Deserialize, ToSchema, sqlx::Type, Clone)]
 #[serde(rename_all = "lowercase")]
@@ -25,20 +24,133 @@ impl AuthType {
     }
 }
 
+#[derive(sqlx::Type, Debug)]
+#[sqlx(transparent)]
+pub struct SshKeyId(i64);
+
+impl_deref!(SshKeyId, i64);
+
+entity! {
+    #[derive(sqlx::FromRow)]
+    pub struct SshKeyRow {
+        id: SshKeyId,
+        name: String,
+        username: String,
+        password: Option<String>,
+        private_key: Option<SshPrivateKey>,
+        public_key: Option<SshPublicKey>,
+        auth_type: AuthType,
+        created_at: DateTime<Utc>,
+    }
+}
+
 pub enum SshKey {
     Password {
-        id: i64,
+        id: SshKeyId,
         name: String,
         username: String,
         password: String,
     },
     KeyPair {
-        id: i64,
+        id: SshKeyId,
         name: String,
         username: String,
-        private_key: String,
-        public_key: Option<String>,
+        private_key: SshPrivateKey,
+        public_key: Option<SshPublicKey>,
     },
+}
+
+impl TryFrom<SshKeyRow> for SshKey {
+    type Error = AppError;
+
+    fn try_from(value: SshKeyRow) -> Result<Self, Self::Error> {
+        match value.auth_type {
+            AuthType::Password => Ok(Self::Password {
+                id: value.id,
+                name: value.name,
+                username: value.username,
+                password: value.password.ok_or(AppError::CouldNotParse(
+                    "SshKey missing password".to_string(),
+                ))?,
+            }),
+            AuthType::KeyPair => Ok(Self::KeyPair {
+                id: value.id,
+                name: value.name,
+                username: value.username,
+                private_key: value.private_key.ok_or(AppError::CouldNotParse(
+                    "SshKey missing private key".to_string(),
+                ))?,
+                public_key: value.public_key,
+            }),
+        }
+    }
+}
+
+impl From<SshKey> for SshKeyRow {
+    fn from(value: SshKey) -> Self {
+        match value {
+            SshKey::Password {
+                id,
+                name,
+                username,
+                password,
+            } => Self {
+                id,
+                name,
+                username,
+                password: Some(password),
+                auth_type: AuthType::Password,
+                created_at: Utc::now(),
+                private_key: None,
+                public_key: None,
+            },
+            SshKey::KeyPair {
+                id,
+                name,
+                username,
+                public_key,
+                private_key,
+            } => Self {
+                id,
+                name,
+                username,
+                public_key,
+                private_key: Some(private_key),
+                auth_type: AuthType::KeyPair,
+                created_at: Utc::now(),
+                password: None,
+            },
+        }
+    }
+}
+
+impl NewSshKeyRow {
+    pub fn new(key_name: String, ssh_auth_request: SshAuthRequest) -> Self {
+        match ssh_auth_request {
+            SshAuthRequest::Password { username, password } => Self {
+                name: key_name,
+                username: username.to_owned(),
+                password: Some(password.to_owned()),
+                private_key: None,
+                public_key: None,
+                auth_type: AuthType::Password,
+                created_at: Utc::now(),
+            },
+            SshAuthRequest::KeyPair {
+                username,
+                public_key,
+                private_key,
+            } => Self {
+                name: key_name,
+                username: username.to_owned(),
+                password: None,
+                private_key: Some(private_key),
+                public_key,
+                auth_type: AuthType::KeyPair,
+                created_at: Utc::now(),
+            },
+        }
+    }
 }
 
 impl<'a> SshKey {
@@ -83,102 +195,67 @@ impl SshService {
             host_ssh_private_key: env.local_ssh_private_key.to_owned(),
         }
     }
-
-    pub async fn create_password_auth(
-        &self,
-        name: &str,
-        username: &str,
-        password: &str,
-    ) -> AppResult<SshKey> {
-        let id: i64 = sqlx::query_scalar!(
-            "INSERT INTO ssh_keys (name, username, password, auth_type, created_at) VALUES ($1, $2, $3, $4, $5) RETURNING id",
-            name,
-            username,
-            password,
-            AuthType::Password as _,
-            Utc::now()
+    
+    pub async fn create_ssh_key(&self, new_ssh_key_row: NewSshKeyRow) -> AppResult<SshKey> {
+        let ssh_key_row = sqlx::query_as!(
+            SshKeyRow,
+            r#"
+            INSERT INTO ssh_keys (name, username, private_key, public_key, auth_type, created_at)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING
+                id AS "id!: _",
+                name,
+                username,
+                password,
+                private_key as "private_key: _",
+                public_key as "public_key: _",
+                auth_type as "auth_type!: _",
+                created_at
+            "#,
+            new_ssh_key_row.name,
+            new_ssh_key_row.username,
+            new_ssh_key_row.private_key.as_ref().map(Deref::deref),
+            new_ssh_key_row.public_key.as_ref().map(Deref::deref),
+            new_ssh_key_row.auth_type as AuthType,
+            new_ssh_key_row.created_at
         )
-        .fetch_one(&*self.db)
-        .await
-        ?;
+            .fetch_one(&*self.db)
+            .await?;
 
-        Ok(SshKey::Password {
-            id,
-            name: name.to_string(),
-            username: username.to_string(),
-            password: password.to_string(),
-        })
+        Ok(SshKey::try_from(ssh_key_row)?)
     }
 
-    pub async fn create_key_auth(
-        &self,
-        name: &str,
-        username: &str,
-        private_key: &str,
-        public_key: Option<&str>,
-    ) -> AppResult<SshKey> {
-        let id: i64 = sqlx::query_scalar!(
-            "INSERT INTO ssh_keys (name, username, private_key, public_key, auth_type, created_at) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
-            name,
-            username,
-            private_key,
-            public_key,
-            AuthType::KeyPair as _,
-            Utc::now()
-        )
-        .fetch_one(&*self.db)
-        .await
-        ?;
-
-        Ok(SshKey::KeyPair {
-            id,
-            name: name.to_string(),
-            username: username.to_string(),
-            private_key: private_key.to_string(),
-            public_key: public_key.map(|key| key.to_string()),
-        })
-    }
-
-    pub async fn get_key_by_id(&self, key_id: &i64) -> AppResult<SshKey> {
-        let row = sqlx::query!(
-            r#"SELECT id, name, username, auth_type AS "auth_type: AuthType", password, private_key, public_key FROM ssh_keys WHERE id = $1"#,
-            key_id
+    pub async fn get_key_by_id(&self, key_id: &SshKeyId) -> AppResult<SshKey> {
+        let ssh_key_row = sqlx::query_as!(
+            SshKeyRow,
+            r#"
+            SELECT 
+                id AS "id!: _",
+                name,
+                username,
+                password,
+                private_key as "private_key: _",
+                public_key as "public_key: _",
+                auth_type as "auth_type!: _",
+                created_at
+            FROM ssh_keys WHERE id = $1
+            "#,
+            key_id.deref()
         )
         .fetch_optional(&*self.db)
-        .await
-        ?;
-
-        let row = row.ok_or(AppError::Validation("SSH key not found".into()))?;
-
-        Ok(if row.auth_type.is_keypair() {
-            SshKey::KeyPair {
-                id: row.id,
-                name: row.name,
-                username: row.username,
-                private_key: row
-                    .private_key
-                    .ok_or(AppError::validation("private_key is None in Server"))?,
-                public_key: row.public_key,
-            }
-        } else {
-            SshKey::Password {
-                id: row.id,
-                name: row.name,
-                username: row.username,
-                password: row
-                    .password
-                    .ok_or(AppError::validation("password is None in Server"))?,
-            }
-        })
+        .await?
+            .ok_or(AppError::Validation("SSH key not found".into()))?;
+        
+        Ok(SshKey::try_from(ssh_key_row)?)
     }
 
     pub async fn get_key_for_server(&self, server: &Server) -> AppResult<SshKey> {
         match server {
             Server::Local { .. } => Ok(SshKey::KeyPair {
-                id: 0,
+                id: SshKeyId(0),
                 name: "local-server".to_string(),
                 username: self.host_ssh_username.clone(),
-                private_key: self.host_ssh_private_key.clone(),
+                private_key: SshPrivateKey::try_new(self.host_ssh_private_key.clone())?,
                 public_key: None,
             }),
             Server::Remote { ssh_key_id, .. } => self.get_key_by_id(ssh_key_id).await,

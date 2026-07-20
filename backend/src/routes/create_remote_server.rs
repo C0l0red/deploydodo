@@ -6,26 +6,25 @@ use utoipa::ToSchema;
 
 use crate::dependencies::Dependencies;
 use crate::error::{AppError, AppResult};
-use crate::extractors::Auth;
-use crate::services::ssh_service::SshKey;
+use crate::extractors::{Auth, RequestJson};
+use crate::services::ssh_service::{NewSshKeyRow};
 use crate::services::types::{JobStatus, JobType};
-use crate::validation::{NonEmptyString, ServerPort};
+use crate::new_types::{NonEmptyString, ServerPort, SshPrivateKey, SshPublicKey};
 // ── SSH auth sub-types ────────────────────────────────────────────────────────
 
 #[derive(Deserialize, ToSchema)]
 #[serde(tag = "authType", rename_all = "lowercase")]
 pub enum SshAuthRequest {
     Password {
-        username: String,
-        password: String,
+        username: NonEmptyString,
+        password: NonEmptyString,
     },
     KeyPair {
-        username: String,
+        username: NonEmptyString,
         #[serde(rename = "privateKey")]
-        private_key: NonEmptyString,
-        // FIXME: Why is this optional? I don't seem to get this struct
+        private_key: SshPrivateKey,
         #[serde(rename = "publicKey")]
-        public_key: Option<String>,
+        public_key: Option<SshPublicKey>,
     },
 }
 
@@ -45,7 +44,6 @@ impl SshAuthRequest {
                 private_key,
                 ..
             } => {
-                // FIXME: I don't understand this validation logic, how can username be defined here?
                 if username.trim().is_empty() {
                     return Err(AppError::Validation("Username is required".into()));
                 }
@@ -181,10 +179,8 @@ fn create_connecting_remote_steps(active_key: StepKey) -> Vec<ConnectingStep> {
 pub async fn create_remote_server(
     _: Auth,
     State(deps): State<Dependencies>,
-    Json(request): Json<CreateRemoteServerRequest>,
+    RequestJson(request): RequestJson<CreateRemoteServerRequest>,
 ) -> AppResult<(StatusCode, Json<StartJobResponse>)> {
-    request.validate()?;
-
     let job_id = deps.job_service.create_job(JobType::CreateServer).await?;
 
     let job_id_bg = job_id.clone();
@@ -196,7 +192,7 @@ pub async fn create_remote_server(
 }
 
 async fn run_job(job_id: String, request: CreateRemoteServerRequest, deps: Dependencies) {
-    match handle_remote(&job_id, &request, &deps).await {
+    match handle_remote(&job_id, request, &deps).await {
         Ok(()) => {
             let _ = deps
                 .job_service
@@ -219,7 +215,7 @@ async fn run_job(job_id: String, request: CreateRemoteServerRequest, deps: Depen
 
 async fn handle_remote(
     job_id: &str,
-    request: &CreateRemoteServerRequest,
+    request: CreateRemoteServerRequest,
     deps: &Dependencies,
 ) -> AppResult<()> {
     let CreateRemoteServerRequest {
@@ -240,8 +236,8 @@ async fn handle_remote(
         .await?;
 
     let session = SshSession::connect(
-        hostname,
-        **port,
+        &hostname,
+        *port,
         auth.get_username(),
         auth.get_ssh_auth(),
         SshTimeout::inactivity_secs(300),
@@ -279,11 +275,12 @@ async fn handle_remote(
     session.disconnect().await?;
 
     let key_name = format!("{name}-key");
-    let ssh_key = create_ssh_key(&key_name, auth, deps).await?;
+    let new_ssh_key_row = NewSshKeyRow::new(key_name, auth);
+    let ssh_key = deps.ssh_service.create_ssh_key(new_ssh_key_row).await?;
 
     let server = deps
         .server_service
-        .create_remote_server(name, hostname, **port, *ssh_key.id())
+        .create_remote_server(&name, &hostname, *port, *ssh_key.id())
         .await?;
 
     tracing::info!(id = %&server.id(), ssh_key_id = ssh_key.id(), "remote server created");
@@ -303,29 +300,6 @@ async fn handle_remote(
         .await?;
 
     Ok(())
-}
-
-async fn create_ssh_key(
-    key_name: &str,
-    auth: &SshAuthRequest,
-    deps: &Dependencies,
-) -> AppResult<SshKey> {
-    match auth {
-        SshAuthRequest::Password { username, password } => {
-            deps.ssh_service
-                .create_password_auth(key_name, username, password)
-                .await
-        }
-        SshAuthRequest::KeyPair {
-            username,
-            private_key,
-            public_key,
-        } => {
-            deps.ssh_service
-                .create_key_auth(key_name, username, private_key, public_key.as_deref())
-                .await
-        }
-    }
 }
 
 async fn verify_docker_runtime(session: &SshSession, retry_after_install: bool) -> AppResult<()> {

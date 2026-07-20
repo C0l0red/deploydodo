@@ -3,37 +3,12 @@ use std::num::NonZeroU16;
 use url::Host;
 use utoipa::ToSchema;
 use crate::error::AppError;
+use crate::{impl_deref, impl_deserialize_via_try_new, newtype};
 
-macro_rules! impl_deserialize_via_try_new {
-    ($type:ty, $input:ty) => {
-        impl<'de> serde::Deserialize<'de> for $type {
-            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-            where
-                D: serde::Deserializer<'de>,
-            {
-                let value = <$input as serde::Deserialize>::deserialize(deserializer)?;
-
-                Self::try_new(value)
-                    .map_err(|err| <D::Error as serde::de::Error>::custom(err.message()))
-            }
-        }
-    };
+newtype! {
+    #[derive(ToSchema, Debug)]
+    pub struct PlainPassword(String);
 }
-
-macro_rules! impl_deref {
-    ($type:ty, $target:ty) => {
-        impl std::ops::Deref for $type {
-            type Target = $target;
-
-            fn deref(&self) -> &Self::Target {
-                &self.0
-            }
-        }
-    };
-}
-
-#[derive(ToSchema, Debug)]
-pub struct PlainPassword(String);
 
 impl PlainPassword {
     fn try_new(value: impl Into<String>) -> Result<Self, AppError> {
@@ -47,11 +22,12 @@ impl PlainPassword {
     }
 }
 
-impl_deref!(PlainPassword, String);
-impl_deserialize_via_try_new!(PlainPassword, String);
 
-#[derive(ToSchema, Debug)]
-pub struct NonEmptyString(String);
+newtype! {
+    #[derive(ToSchema, sqlx::Type, Debug)]
+    #[sqlx(transparent)]
+    pub struct NonEmptyString(String);
+}
 
 impl NonEmptyString {
     pub fn try_new(value: impl Into<String>) -> Result<Self, AppError> {
@@ -65,17 +41,16 @@ impl NonEmptyString {
     }
 }
 
-impl_deref!(NonEmptyString, String);
-impl_deserialize_via_try_new!(NonEmptyString, String);
-
 impl Display for NonEmptyString {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
     }
 }
 
-#[derive(Debug, ToSchema)]
-pub struct ServerPort(u16);
+newtype! {
+    #[derive(Debug, ToSchema)]
+    pub struct ServerPort(u16);
+}
 
 impl ServerPort {
     pub fn try_new(value: impl Into<u16>) -> Result<Self, AppError> {
@@ -85,12 +60,11 @@ impl ServerPort {
     }
 }
 
-impl_deref!(ServerPort, u16);
-impl_deserialize_via_try_new!(ServerPort, u16);
-
-/// An abstraction of a hostname, with validation
-#[derive(Debug)]
-pub struct Hostname(String);
+newtype! {
+    /// An abstraction of a hostname, with validation
+   #[derive(Debug)]
+    pub struct Hostname(String);
+}
 
 impl Hostname {
     // FIXME: This validation is not working in the way I expected. Need to find another way
@@ -108,12 +82,54 @@ impl Hostname {
     }
 }
 
-impl_deref!(Hostname, String);
-impl_deserialize_via_try_new!(Hostname, String);
+newtype! {
+    deserialize_as(String)
+    deref_as(String)
+    
+    #[derive(ToSchema, sqlx::Type)]
+    #[sqlx(transparent)]
+    pub struct SshPublicKey(NonEmptyString);
+}
+
+impl From<NonEmptyString> for String {
+    fn from(value: NonEmptyString) -> Self {
+        value.into()
+    }
+}
+
+impl SshPublicKey {
+    pub fn try_new(value: impl Into<String>) -> Result<Self, AppError> {
+        let value = NonEmptyString::try_new(value)?;
+
+        Ok(Self(value))
+    }
+}
+
+newtype! {
+    deserialize_as(String)
+    deref_as(String)
+
+    #[derive(ToSchema, sqlx::Type)]
+    #[sqlx(transparent)]
+    pub struct SshPrivateKey(NonEmptyString);
+}
+
+
+impl SshPrivateKey {
+    pub fn try_new(value: impl Into<String>) -> Result<Self, AppError> {
+        let value = NonEmptyString::try_new(value)?;
+        if !value.starts_with("-----BEGIN")
+        {
+            return Err(AppError::Validation("must be a valid SSH private key".into()));
+        }
+
+        Ok(Self(value))
+    }
+}
 
 #[cfg(test)]
 mod tests {
-    use crate::validation::{Hostname, NonEmptyString, PlainPassword, ServerPort};
+    use crate::new_types::{Hostname, NonEmptyString, PlainPassword, ServerPort};
 
     #[test]
     fn non_empty_string_rejects_blank_values() {

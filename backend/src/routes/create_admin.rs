@@ -5,7 +5,7 @@ use utoipa::ToSchema;
 use crate::error::{AppError, AppResult};
 use crate::extractors::RequestJson;
 use crate::services::types::VariableKey;
-use crate::validation::{NonEmptyString, PlainPassword};
+use crate::new_types::{NonEmptyString, PlainPassword};
 use crate::{dependencies::Dependencies, services::types::AccountType};
 
 #[derive(Deserialize, ToSchema)]
