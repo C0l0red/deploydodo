@@ -1,14 +1,12 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
-use argon2::{password_hash::SaltString, Argon2, PasswordHasher, PasswordVerifier};
 use chrono::{DateTime, Utc};
-use rand_core::OsRng;
 use serde::Serialize;
 use sqlx::{FromRow, PgPool, Type};
 use utoipa::ToSchema;
 
-use crate::new_types::{HashedPassword, PlainPassword};
+use crate::new_types::HashedPassword;
 use crate::{
     entity, entity_id,
     error::{AppError, AppResult},
@@ -20,7 +18,7 @@ pub struct UserService {
     db: Arc<PgPool>,
 }
 
-#[derive(Type, Serialize, ToSchema)]
+#[derive(Type, Serialize, ToSchema, Debug, PartialEq)]
 #[serde(rename_all = "lowercase")]
 #[sqlx(type_name = "accounttype", rename_all = "lowercase")]
 pub enum AccountType {
@@ -41,29 +39,6 @@ entity! {
         password_hash: HashedPassword,
         account_type: AccountType,
         created_at: DateTime<Utc>,
-    }
-}
-
-pub struct PasswordUtils;
-
-impl PasswordUtils {
-    pub fn hash_password(password: &PlainPassword) -> AppResult<HashedPassword> {
-        let salt = SaltString::generate(&mut OsRng);
-        Argon2::default()
-            .hash_password(password.as_bytes(), &salt)
-            .map_err(|_| AppError::PasswordHash)
-            .map(Into::into)
-    }
-
-    pub fn verify_password(
-        plain_password: &PlainPassword,
-        hashed_password: &HashedPassword,
-    ) -> AppResult<()> {
-        let parsed_hash = argon2::PasswordHash::new(hashed_password)
-            .map_err(|e| AppError::InternalServerError(e.to_string()))?;
-        Argon2::default()
-            .verify_password(plain_password.as_bytes(), &parsed_hash)
-            .map_err(|_| AppError::InvalidCredentials)
     }
 }
 
@@ -136,5 +111,87 @@ impl UserService {
         )
         .fetch_optional(&*self.db)
         .await?)
+    }
+}
+
+mod test {
+    use crate::new_types::HashedPassword;
+    use crate::services::user_service::{AccountType, NewUser, User};
+    use crate::services::user_service::UserId;
+    use crate::services::UserService;
+    use std::sync::Arc;
+
+    #[sqlx::test]
+    async fn create_user_persists_a_user(pool: sqlx::PgPool) {
+        let user_service = UserService::new(Arc::new(pool.clone()));
+        let password_hash = HashedPassword::hash(&"test_password".into()).expect("Failed to hash password");
+        let new_user = NewUser {
+            name: "test".to_string(),
+            email: "test@test.com".to_string(),
+            password_hash,
+            account_type: AccountType::Admin,
+            created_at: Default::default(),
+        };
+
+        let created_user = user_service.create_user(new_user).await.unwrap();
+
+        let db_user = sqlx::query_as!(
+            User,
+            r#"
+            SELECT
+                id AS "id: UserId",
+                name,
+                email,
+                password_hash AS "password_hash: HashedPassword",
+                account_type AS "account_type: AccountType",
+                created_at
+            FROM users
+            LIMIT 1
+            "#
+        ).fetch_one(&pool)
+            .await
+            .unwrap();
+
+        assert_eq!(db_user.name, "test");
+        assert_eq!(created_user.email, "test@test.com");
+        assert_eq!(created_user.account_type, AccountType::Admin);
+    }
+
+    #[sqlx::test(fixtures(path = "../../tests/fixtures", scripts("users")))]
+    async fn count_users_counts_rows_from_fixtures(pool: sqlx::PgPool) {
+        let user_service = UserService::new(Arc::new(pool.clone()));
+
+        let count = user_service.count_users().await.unwrap();
+
+        assert_eq!(count, 2, "there should be exactly 2 users from fixtures");
+    }
+
+    // Verify an existing user can be fetched by email
+    #[sqlx::test(fixtures(path = "../../tests/fixtures", scripts("users")))]
+    async fn get_by_email_returns_user_when_present(pool: sqlx::PgPool) {
+        let user_service = UserService::new(Arc::new(pool.clone()));
+
+        let found = user_service
+            .get_by_email("ada@example.com")
+            .await
+            .unwrap();
+
+        let user = found.expect("expected user for ada@example.com");
+        assert_eq!(user.email, "ada@example.com");
+        assert_eq!(user.name, "Ada Lovelace");
+        assert_eq!(user.account_type, AccountType::Admin);
+    }
+
+    // Unknown email should return None
+    #[sqlx::test(fixtures(path = "../../tests/fixtures", scripts("users")))]
+    async fn get_by_email_returns_none_for_unknown(pool: sqlx::PgPool) {
+        let user_service = UserService::new(Arc::new(pool.clone()));
+
+        let found = user_service
+            .get_by_email("nobody@example.com")
+            .await
+            .unwrap();
+
+        assert!(found.is_none(), "expected None for unknown email");
     }
 }

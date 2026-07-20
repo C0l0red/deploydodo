@@ -1,10 +1,12 @@
-use crate::error::AppError;
+use crate::error::{AppError, AppResult};
 use crate::{impl_deref, impl_deserialize_via_try_new, impl_sqlx_type_via, newtype};
-use argon2::password_hash::Encoding;
+use argon2::password_hash::{Encoding, SaltString};
 use serde::Serialize;
 use std::fmt::Display;
 use std::num::NonZeroU16;
 use std::str::FromStr;
+use argon2::{Argon2, PasswordHasher, PasswordVerifier};
+use rand_core::OsRng;
 use url::Host;
 use utoipa::ToSchema;
 
@@ -24,6 +26,13 @@ impl PlainPassword {
     }
 }
 
+#[cfg(test)]
+impl From<&str> for PlainPassword {
+    fn from(value: &str) -> Self {
+        Self(value.to_string())
+    }
+}
+
 newtype! {
     pub struct HashedPassword(String);
 }
@@ -35,6 +44,25 @@ impl HashedPassword {
             .map_err(|_| AppError::CouldNotParse("Password hash".to_string()))?;
 
         Ok(Self(value))
+    }
+
+    pub fn hash(password: &PlainPassword) -> AppResult<Self> {
+        let salt = SaltString::generate(&mut OsRng);
+        Argon2::default()
+            .hash_password(password.as_bytes(), &salt)
+            .map_err(|_| AppError::PasswordHash)
+            .map(Into::into)
+    }
+
+    pub fn verify(
+        &self,
+        plain_password: &PlainPassword,
+    ) -> AppResult<()> {
+        let parsed_hash = argon2::PasswordHash::new(&self)
+            .map_err(|e| AppError::InternalServerError(e.to_string()))?;
+        Argon2::default()
+            .verify_password(plain_password.as_bytes(), &parsed_hash)
+            .map_err(|_| AppError::InvalidCredentials)
     }
 }
 

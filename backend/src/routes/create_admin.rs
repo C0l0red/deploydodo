@@ -4,10 +4,10 @@ use utoipa::ToSchema;
 
 use crate::error::{AppError, AppResult};
 use crate::extractors::RequestJson;
-use crate::new_types::{NonEmptyString, PlainPassword};
+use crate::new_types::{HashedPassword, NonEmptyString, PlainPassword};
 use crate::services::types::VariableKey;
 use crate::{dependencies::Dependencies, services::types::AccountType};
-use crate::services::user_service::{NewUser, PasswordUtils, UserId};
+use crate::services::user_service::{NewUser, UserId};
 
 #[derive(Deserialize, ToSchema)]
 pub struct CreateAdminRequest {
@@ -47,7 +47,7 @@ pub async fn create_admin(
         return Err(AppError::AdminAlreadyConfigured);
     }
 
-    let hashed_password = PasswordUtils::hash_password(&request.password)?;
+    let hashed_password = HashedPassword::hash(&request.password)?;
     let new_user = NewUser::admin(request, hashed_password);
     let user = deps.user_service.create_user(new_user).await?;
 

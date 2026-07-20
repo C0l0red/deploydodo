@@ -1,3 +1,4 @@
+use argon2::PasswordVerifier;
 use axum::{extract::State, http::StatusCode, Json};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -7,8 +8,7 @@ use crate::{
     error::{AppError, AppResult},
 };
 use crate::extractors::RequestJson;
-use crate::new_types::{NonEmptyString, PlainPassword};
-use crate::services::user_service::PasswordUtils;
+use crate::new_types::{HashedPassword, NonEmptyString, PlainPassword};
 
 #[derive(Deserialize, ToSchema)]
 pub struct LoginRequest {
@@ -41,7 +41,7 @@ pub async fn login(
         .await?
         .ok_or(AppError::InvalidCredentials)?;
 
-    PasswordUtils::verify_password(&request.password, &user.password_hash)?;
+    user.password_hash.verify(&request.password)?;
 
     let session_token = deps.session_service.create_session(user.id).await?;
 
