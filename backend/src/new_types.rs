@@ -1,4 +1,3 @@
-use crate::env::TypeName;
 use crate::error::AppError;
 use crate::{impl_deref, impl_deserialize_via_try_new, impl_sqlx_type_via, newtype};
 use serde::Serialize;
@@ -67,11 +66,6 @@ impl FromStr for ServerPort {
     }
 }
 
-impl TypeName for ServerPort {
-    fn type_name() -> &'static str {
-        "ServerPort"
-    }
-}
 
 impl ServerPort {
     pub fn try_new(value: impl Into<u16>) -> Result<Self, AppError> {

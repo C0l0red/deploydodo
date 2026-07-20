@@ -11,7 +11,7 @@ pub async fn create_pool() -> sqlx::Result<PgPool> {
     Ok(pool)
 }
 
-async fn connect_with_retry(url: &str) -> sqlx::Result<sqlx::PgPool> {
+async fn connect_with_retry(url: &str) -> sqlx::Result<PgPool> {
     let mut attempt = 0;
     loop {
         match PgPoolOptions::new().max_connections(5).connect(url).await {

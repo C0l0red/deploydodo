@@ -38,13 +38,13 @@ pub fn init_env() {
 
 fn read_env<T>(key: &str) -> T
 where
-    T: FromStr + Debug + TypeName,
+    T: FromStr + Debug,
     <T as FromStr>::Err: Debug,
 {
     std::env::var(key)
         .map(|h| {
             h.parse::<T>()
-                .unwrap_or_else(|_| panic!("{key} must be a valid {}", T::type_name()))
+                .unwrap_or_else(|_| panic!("{key} must be a valid {}", std::any::type_name::<T>()))
         })
         .unwrap_or_else(|_| panic!("The variable {key} must be present at runtime"))
 }
@@ -56,24 +56,3 @@ fn read_file_path_from_env(key: &str) -> String {
         .unwrap_or_else(|_| panic!("The path stored in {key} ({path}) does not exist"))
 }
 
-pub trait TypeName {
-    fn type_name() -> &'static str;
-}
-
-impl TypeName for u16 {
-    fn type_name() -> &'static str {
-        "u16"
-    }
-}
-
-impl TypeName for u32 {
-    fn type_name() -> &'static str {
-        "u32"
-    }
-}
-
-impl TypeName for String {
-    fn type_name() -> &'static str {
-        "String"
-    }
-}
