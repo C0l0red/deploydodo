@@ -47,7 +47,7 @@ macro_rules! impl_deserialize_via_try_new {
     };
 }
 
-/// Implements `Deref` in the most common way it's used
+/// Implements `Deref` and `DerefMut` in the most common way they're used
 #[macro_export]
 macro_rules! impl_deref {
     ($type:ty, $target:ty) => {
@@ -58,56 +58,42 @@ macro_rules! impl_deref {
                 &self.0
             }
         }
+
+        impl std::ops::DerefMut for $type {
+            fn deref_mut(&mut self) -> &mut Self::Target {
+                &mut self.0
+            }
+        }
     };
 }
 
 /// A shortcut for defining a newtype that implements `Deref` and `Deserialize`.
+/// Also adds some common macros like deriving sqlx::Type, and the sqlx Transparent macro, which
+/// can be turned off if not needed for the particular newtype
 #[macro_export]
 macro_rules! newtype {
-    // Neither deref_as nor deserialize_as specified
-    (
-        $(#[$meta:meta])*
-        $vis:vis struct $name:ident($inner:ty);
-    ) => {
-        $(#[$meta])*
-        $vis struct $name($inner);
-
-        impl_deref!($name, $inner);
-        impl_deserialize_via_try_new!($name, $inner);
-    };
-
-    // Only deserialize_as
-    (
-        deserialize_as($deserialize:ty)
+    // Implementation
+    (@impl
+        derive = yes,
+        deref = $deref:ty,
+        deserialize = $deserialize:ty,
 
         $(#[$meta:meta])*
         $vis:vis struct $name:ident($inner:ty);
     ) => {
-        $(#[$meta])*
-        $vis struct $name($inner);
-
-        impl_deref!($name, $inner);
-        impl_deserialize_via_try_new!($name, $deserialize);
-    };
-
-    // Only deref_as
-    (
-        deref_as($deref:ty)
-
-        $(#[$meta:meta])*
-        $vis:vis struct $name:ident($inner:ty);
-    ) => {
+        #[derive(sqlx::Type, utoipa::ToSchema)]
+        #[sqlx(transparent)]
         $(#[$meta])*
         $vis struct $name($inner);
 
         impl_deref!($name, $deref);
-        impl_deserialize_via_try_new!($name, $inner);
+        impl_deserialize_via_try_new!($name, $deserialize);
     };
 
-    // Both specified (either order would require another arm)
-    (
-        deserialize_as($deserialize:ty)
-        deref_as($deref:ty)
+    (@impl
+        derive = no,
+        deref = $deref:ty,
+        deserialize = $deserialize:ty,
 
         $(#[$meta:meta])*
         $vis:vis struct $name:ident($inner:ty);
@@ -117,6 +103,158 @@ macro_rules! newtype {
 
         impl_deref!($name, $deref);
         impl_deserialize_via_try_new!($name, $deserialize);
+    };
+
+    // Public API
+
+    // Default to inner type for Deref and Deserialize implementations, include extra derives
+    (
+        $(#[$meta:meta])*
+        $vis:vis struct $name:ident($inner:ty);
+    ) => {
+        newtype! {
+            @impl
+            derive = yes,
+            deref = $inner,
+            deserialize = $inner,
+
+            $(#[$meta])*
+            $vis struct $name($inner);
+        }
+    };
+
+    // Default to inner types for Deref and Dserialize implementations, exclude extra derives
+    (
+        no_extra_derives
+
+        $(#[$meta:meta])*
+        $vis:vis struct $name:ident($inner:ty);
+    ) => {
+        newtype! {
+            @impl
+            derive = no,
+            deref = $inner,
+            deserialize = $inner,
+
+            $(#[$meta])*
+            $vis struct $name($inner);
+        }
+    };
+
+    // Explicit types for Deref and Default implementations, include extra derives
+    (
+        deref_as($deref:ty)
+        deserialize_as($deserialize:ty)
+
+        $(#[$meta:meta])*
+        $vis:vis struct $name:ident($inner:ty);
+    ) => {
+        newtype! {
+            @impl
+            derive = yes,
+            deref = $deref,
+            deserialize = $deserialize,
+
+            $(#[$meta])*
+            $vis struct $name($inner);
+        }
+    };
+
+    // Explicit types for Deref and Default implementations, exclude extra derives
+    (
+        no_extra_derives
+
+        deref_as($deref:ty)
+        deserialize_as($deserialize:ty)
+
+        $(#[$meta:meta])*
+        $vis:vis struct $name:ident($inner:ty);
+    ) => {
+        newtype! {
+            @impl
+            derive = no,
+            deref = $deref,
+            deserialize = $deserialize,
+
+            $(#[$meta])*
+            $vis struct $name($inner);
+        }
     };
 }
 
+/// An entity ID macro that generates common code for all entity IDs, which are newtypes around i64
+#[macro_export]
+macro_rules! entity_id {
+    (
+        $(#[$meta:meta])*
+        $vis:vis struct $name:ident;
+    ) => {
+        newtype! {
+            $(#[$meta])*
+            #[derive(Debug, serde::Serialize)]
+            $vis struct $name(i64);
+        }
+
+        impl $name {
+            pub fn try_new(value: i64) -> Result<Self, AppError> {
+                Ok(Self(value))
+            }
+        }
+        impl_display_via_to_string!($name);
+    };
+}
+
+/// Helper macro to implement sqlx traits, including Type, Decode, and Encode
+/// Useful for wrapper types that have inner unsigned integer inner types, which are not supported
+/// by sqlx::Type, sqlx::Decode and sqlx::Encode by default
+#[macro_export]
+macro_rules! impl_sqlx_type_via {
+    ($ty:ty => $db_ty:ty) => {
+        impl sqlx::Type<sqlx::Postgres> for $ty {
+            fn type_info() -> sqlx::postgres::PgTypeInfo {
+                <$db_ty as sqlx::Type<sqlx::Postgres>>::type_info()
+            }
+
+            fn compatible(ty: &sqlx::postgres::PgTypeInfo) -> bool {
+                <$db_ty as sqlx::Type<sqlx::Postgres>>::compatible(ty)
+            }
+        }
+
+        impl<'q> sqlx::Encode<'q, sqlx::Postgres> for $ty {
+            fn encode_by_ref(
+                &self,
+                buf: &mut sqlx::postgres::PgArgumentBuffer,
+            ) -> Result<sqlx::encode::IsNull, Box<dyn std::error::Error + Send + Sync>> {
+                let value: $db_ty = self.0.into();
+                <$db_ty as sqlx::Encode<sqlx::Postgres>>::encode_by_ref(&value, buf)
+            }
+
+            fn size_hint(&self) -> usize {
+                let value: $db_ty = self.0.into();
+                <$db_ty as sqlx::Encode<sqlx::Postgres>>::size_hint(&value)
+            }
+        }
+
+        impl<'r> sqlx::Decode<'r, sqlx::Postgres> for $ty {
+            fn decode(
+                value: sqlx::postgres::PgValueRef<'r>,
+            ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+                let value = <$db_ty as sqlx::Decode<sqlx::Postgres>>::decode(value)?;
+                Ok(Self(value.try_into()?))
+            }
+        }
+    };
+}
+
+/// Implements Display using the Display implementation of the inner type
+/// Useful for newtype wrappers that wrap a primitive type that already implements Display
+#[macro_export]
+macro_rules! impl_display_via_to_string {
+    ($name:ty) => {
+        impl ::std::fmt::Display for $name {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+                ::std::fmt::Display::fmt(&**self, f)
+            }
+        }
+    };
+}

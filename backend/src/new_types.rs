@@ -1,12 +1,16 @@
+use crate::error::AppError;
+use crate::{impl_deref, impl_deserialize_via_try_new, impl_sqlx_type_via, newtype};
 use std::fmt::Display;
 use std::num::NonZeroU16;
+use std::str::FromStr;
+use serde::Serialize;
 use url::Host;
 use utoipa::ToSchema;
-use crate::error::AppError;
-use crate::{impl_deref, impl_deserialize_via_try_new, newtype};
+use crate::env::TypeName;
 
 newtype! {
-    #[derive(ToSchema, Debug)]
+    // FIXME: We probably don't want the password being debugable
+    #[derive(Debug)]
     pub struct PlainPassword(String);
 }
 
@@ -22,10 +26,8 @@ impl PlainPassword {
     }
 }
 
-
 newtype! {
-    #[derive(ToSchema, sqlx::Type, Debug)]
-    #[sqlx(transparent)]
+    #[derive(Debug)]
     pub struct NonEmptyString(String);
 }
 
@@ -48,8 +50,27 @@ impl Display for NonEmptyString {
 }
 
 newtype! {
-    #[derive(Debug, ToSchema)]
+    no_extra_derives
+    #[derive(Debug, Copy, Clone, Serialize, ToSchema)]
     pub struct ServerPort(u16);
+}
+
+impl_sqlx_type_via!(ServerPort => i32);
+
+impl FromStr for ServerPort {
+    type Err = AppError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        u16::from_str(s)
+            .map_err(|err| AppError::CouldNotParse(err.to_string()))
+            .map(Self)
+    }
+}
+
+impl TypeName for ServerPort {
+    fn type_name() -> &'static str {
+        "ServerPort"
+    }
 }
 
 impl ServerPort {
@@ -83,11 +104,9 @@ impl Hostname {
 }
 
 newtype! {
-    deserialize_as(String)
     deref_as(String)
-    
-    #[derive(ToSchema, sqlx::Type)]
-    #[sqlx(transparent)]
+    deserialize_as(String)
+
     pub struct SshPublicKey(NonEmptyString);
 }
 
@@ -106,11 +125,9 @@ impl SshPublicKey {
 }
 
 newtype! {
-    deserialize_as(String)
     deref_as(String)
+    deserialize_as(String)
 
-    #[derive(ToSchema, sqlx::Type)]
-    #[sqlx(transparent)]
     pub struct SshPrivateKey(NonEmptyString);
 }
 

@@ -17,7 +17,7 @@ type DockerInput = Pin<Box<dyn AsyncWrite + Send>>;
 type DockerOutput = Pin<Box<dyn Stream<Item = Result<LogOutput, bollard::errors::Error>> + Send>>;
 
 pub struct DockerChannel {
-    docker: bollard::Docker,
+    docker: Docker,
     exec_id: String,
     input: Mutex<DockerInput>,
     output: Mutex<DockerOutput>,
@@ -76,10 +76,10 @@ pub async fn connect_docker_local(
 }
 
 pub async fn connect_docker_remote(
-    hostname: &str,
+    hostname: String,
     port: u16,
-    username: &str,
-    auth: SshAuth<'_>,
+    username: String,
+    auth: SshAuth,
     container_name: &str,
     size: TermSize,
     timeout_config: SshTimeout,

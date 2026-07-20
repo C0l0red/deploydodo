@@ -85,10 +85,10 @@ impl SshSession {
     }
 
     pub async fn connect(
-        hostname: &str,
+        hostname: String,
         port: u16,
-        username: &str,
-        auth: SshAuth<'_>,
+        username: String,
+        auth: SshAuth,
         timeout_config: SshTimeout,
     ) -> Result<Self, ShellError> {
         session_init(hostname, port, username, auth, timeout_config).await
@@ -143,7 +143,7 @@ impl SshSession {
         })
     }
 
-    pub async fn open_channel(&self) -> Result<russh::Channel<russh::client::Msg>, ShellError> {
+    pub async fn open_channel(&self) -> Result<russh::Channel<client::Msg>, ShellError> {
         Ok(self.handle.channel_open_session().await?)
     }
 
@@ -177,10 +177,10 @@ impl SshSession {
 }
 
 async fn session_init(
-    hostname: &str,
+    hostname: String,
     port: u16,
-    username: &str,
-    auth: SshAuth<'_>,
+    username: String,
+    auth: SshAuth,
     timeout_config: SshTimeout,
 ) -> Result<SshSession, ShellError> {
     let config = Arc::new(client::Config {
@@ -198,7 +198,7 @@ async fn session_init(
             private_key,
             passphrase,
         } => {
-            let key = decode_secret_key(private_key, passphrase)?;
+            let key = decode_secret_key(private_key.as_str(), passphrase.as_deref())?;
             let hash = handle.best_supported_rsa_hash().await?.flatten();
             handle
                 .authenticate_publickey(username, PrivateKeyWithHashAlg::new(Arc::new(key), hash))

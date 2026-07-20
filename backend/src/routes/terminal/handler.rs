@@ -5,10 +5,11 @@ use super::session::terminal_init;
 use crate::dependencies::Dependencies;
 use crate::error::AppResult;
 use crate::routes::terminal::{ControlMessage, TerminalParams};
+use crate::services::server_service::ServerId;
 
 pub async fn handle_socket(
     mut socket: WebSocket,
-    server_id: i64,
+    server_id: ServerId,
     params: TerminalParams,
     deps: Dependencies,
 ) -> AppResult<()> {

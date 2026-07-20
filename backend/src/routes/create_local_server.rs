@@ -6,7 +6,8 @@ use crate::dependencies::Dependencies;
 use crate::error::{AppError, AppResult};
 use crate::extractors::{Auth, RequestJson};
 use crate::services::types::{self, VariableKey};
-use crate::new_types::NonEmptyString;
+use crate::new_types::{NonEmptyString, ServerPort};
+use crate::services::server_service::NewServerRow;
 
 #[derive(Deserialize, ToSchema)]
 pub struct CreateLocalServerRequest {
@@ -20,7 +21,7 @@ pub struct CreateLocalServerResponse {
     #[serde(rename = "serverType")]
     pub server_type: types::ServerType,
     pub hostname: String,
-    pub port: u16,
+    pub port: ServerPort,
 }
 
 // ── Handler ───────────────────────────────────────────────────────────────────
@@ -47,9 +48,10 @@ pub async fn create_local_server(
         return Err(AppError::LocalServerAlreadyExists);
     }
 
+    let new_server_row = NewServerRow::local_server(request.name.clone());
     let server = deps
         .server_service
-        .create_local_server(&request.name)
+        .create_server(new_server_row)
         .await?;
 
     tracing::info!(id = %server.id(), "local server created");

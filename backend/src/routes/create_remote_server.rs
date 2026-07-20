@@ -10,6 +10,7 @@ use crate::extractors::{Auth, RequestJson};
 use crate::services::ssh_service::{NewSshKeyRow};
 use crate::services::types::{JobStatus, JobType};
 use crate::new_types::{NonEmptyString, ServerPort, SshPrivateKey, SshPublicKey};
+use crate::services::server_service::NewServerRow;
 // ── SSH auth sub-types ────────────────────────────────────────────────────────
 
 #[derive(Deserialize, ToSchema)]
@@ -29,43 +30,17 @@ pub enum SshAuthRequest {
 }
 
 impl SshAuthRequest {
-    pub fn validate(&self) -> AppResult<()> {
+    pub fn get_username(&self) -> String {
         match self {
-            SshAuthRequest::Password { username, password } => {
-                if username.trim().is_empty() {
-                    return Err(AppError::Validation("Username is required".into()));
-                }
-                if password.is_empty() {
-                    return Err(AppError::Validation("Password is required".into()));
-                }
-            }
-            SshAuthRequest::KeyPair {
-                username,
-                private_key,
-                ..
-            } => {
-                if username.trim().is_empty() {
-                    return Err(AppError::Validation("Username is required".into()));
-                }
-                if private_key.trim().is_empty() {
-                    return Err(AppError::Validation("Private key is required".into()));
-                }
-            }
-        }
-        Ok(())
-    }
-
-    pub fn get_username(&self) -> &str {
-        match self {
-            Self::Password { username, .. } | Self::KeyPair { username, .. } => username,
+            Self::Password { username, .. } | Self::KeyPair { username, .. } => username.to_string(),
         }
     }
 
-    pub fn get_ssh_auth<'a>(&'a self) -> SshAuth<'a> {
+    pub fn get_ssh_auth(&self) -> SshAuth {
         match self {
-            Self::Password { password, .. } => SshAuth::Password(password),
+            Self::Password { password, .. } => SshAuth::Password(password.to_string()),
             Self::KeyPair { private_key, .. } => SshAuth::Key {
-                private_key,
+                private_key: private_key.to_string(),
                 passphrase: None,
             },
         }
@@ -80,18 +55,6 @@ pub struct CreateRemoteServerRequest {
     pub hostname: String,
     pub port: ServerPort,
     pub auth: SshAuthRequest,
-}
-
-impl CreateRemoteServerRequest {
-    fn validate(&self) -> AppResult<()> {
-        if self.name.trim().is_empty() {
-            return Err(AppError::Validation("Name is required".into()));
-        }
-        if self.hostname.trim().is_empty() {
-            return Err(AppError::Validation("Hostname is required".into()));
-        }
-        self.auth.validate()
-    }
 }
 
 /// Returned immediately — use `jobId` to stream progress via
@@ -236,7 +199,7 @@ async fn handle_remote(
         .await?;
 
     let session = SshSession::connect(
-        &hostname,
+        hostname.clone(),
         *port,
         auth.get_username(),
         auth.get_ssh_auth(),
@@ -278,12 +241,13 @@ async fn handle_remote(
     let new_ssh_key_row = NewSshKeyRow::new(key_name, auth);
     let ssh_key = deps.ssh_service.create_ssh_key(new_ssh_key_row).await?;
 
+    let new_server_row = NewServerRow::remote_server(name.clone(), hostname.clone(), port, ssh_key.id());
     let server = deps
         .server_service
-        .create_remote_server(&name, &hostname, *port, *ssh_key.id())
+        .create_server(new_server_row)
         .await?;
 
-    tracing::info!(id = %&server.id(), ssh_key_id = ssh_key.id(), "remote server created");
+    tracing::info!(id = %server.id(), ssh_key_id = %ssh_key.id(), "remote server created");
 
     deps.job_service
         .emit(

@@ -1,12 +1,13 @@
 use std::{fmt::Debug, str::FromStr, sync::Arc};
 
 use tokio::sync::OnceCell;
+use crate::new_types::ServerPort;
 
 #[derive(Debug)]
 pub struct Environment {
     pub database_url: String,
     pub local_ssh_hostname: String,
-    pub local_ssh_port: u16,
+    pub local_ssh_port: ServerPort,
     pub local_ssh_username: String,
     pub local_ssh_private_key: String,
 }
@@ -55,7 +56,7 @@ fn read_file_path_from_env(key: &str) -> String {
         .unwrap_or_else(|_| panic!("The path stored in {key} ({path}) does not exist"))
 }
 
-trait TypeName {
+pub trait TypeName {
     fn type_name() -> &'static str;
 }
 

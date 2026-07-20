@@ -8,10 +8,10 @@ use crate::{
 };
 
 pub async fn connect_host(
-    hostname: &str,
+    hostname: String,
     port: u16,
-    username: &str,
-    auth: SshAuth<'_>,
+    username: String,
+    auth: SshAuth,
     size: TermSize,
     timeout_config: SshTimeout,
 ) -> Result<terminal::Terminal, ShellError> {

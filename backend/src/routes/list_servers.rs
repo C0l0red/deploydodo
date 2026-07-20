@@ -5,17 +5,19 @@ use utoipa::ToSchema;
 use crate::dependencies::Dependencies;
 use crate::error::AppResult;
 use crate::extractors::Auth;
+use crate::new_types::ServerPort;
+use crate::services::server_service::ServerId;
 use crate::services::types;
 
 #[derive(Serialize, ToSchema)]
 pub struct ServerResponse {
-    pub id: i64,
+    pub id: ServerId,
     pub name: String,
     #[serde(rename = "serverType")]
     pub server_type: types::ServerType,
     pub hostname: String,
     #[serde(rename = "sshPort")]
-    pub ssh_port: u16,
+    pub ssh_port: ServerPort,
 }
 
 #[utoipa::path(
@@ -41,7 +43,7 @@ pub async fn list_servers(
             servers
                 .into_iter()
                 .map(|s| ServerResponse {
-                    id: *s.id(),
+                    id: s.id(),
                     name: s.name().to_owned(),
                     server_type: s.server_type().to_owned(),
                     hostname: s.hostname().to_owned(),

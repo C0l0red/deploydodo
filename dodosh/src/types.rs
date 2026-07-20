@@ -1,8 +1,8 @@
-pub enum SshAuth<'a> {
-    Password(&'a str),
+pub enum SshAuth {
+    Password(String),
     Key {
-        private_key: &'a str,
-        passphrase: Option<&'a str>,
+        private_key: String,
+        passphrase: Option<String>,
     },
 }
 
