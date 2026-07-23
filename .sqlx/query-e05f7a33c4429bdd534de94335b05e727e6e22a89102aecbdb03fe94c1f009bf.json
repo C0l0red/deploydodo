@@ -1,0 +1,74 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                id AS \"id!: _\",\n                name,\n                username,\n                password,\n                private_key as \"private_key: _\",\n                public_key as \"public_key: _\",\n                auth_type as \"auth_type!: _\",\n                created_at\n            FROM ssh_keys WHERE id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: _",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "username",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "password",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "private_key: _",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "public_key: _",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "auth_type!: _",
+        "type_info": {
+          "Custom": {
+            "name": "authtype",
+            "kind": {
+              "Enum": [
+                "keypair",
+                "password"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "e05f7a33c4429bdd534de94335b05e727e6e22a89102aecbdb03fe94c1f009bf"
+}

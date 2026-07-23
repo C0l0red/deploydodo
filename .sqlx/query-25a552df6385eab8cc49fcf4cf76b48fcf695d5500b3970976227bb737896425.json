@@ -1,0 +1,83 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO servers (name, hostname, ssh_port, ssh_key_id, server_type, created_at)\n            VALUES ($1, $2, $3, $4, $5, $6)\n            RETURNING\n                id AS \"id!: _\",\n                name,\n                hostname,\n                ssh_port AS \"ssh_port!: _\",\n                ssh_key_id AS \"ssh_key_id!: _\",\n                server_type AS \"server_type!: _\",\n                created_at AS \"created_at!: _\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: _",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "hostname",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "ssh_port!: _",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "ssh_key_id!: _",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 5,
+        "name": "server_type!: _",
+        "type_info": {
+          "Custom": {
+            "name": "servertype",
+            "kind": {
+              "Enum": [
+                "local",
+                "remote"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at!: _",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Varchar",
+        "Int4",
+        "Int8",
+        {
+          "Custom": {
+            "name": "servertype",
+            "kind": {
+              "Enum": [
+                "local",
+                "remote"
+              ]
+            }
+          }
+        },
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "25a552df6385eab8cc49fcf4cf76b48fcf695d5500b3970976227bb737896425"
+}

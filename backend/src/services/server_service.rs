@@ -57,7 +57,7 @@ entity! {
     }
 }
 
-impl NewServerRow {
+impl ServerRowInput {
     pub(crate) fn local_server(name: String) -> Self {
         Self {
             name,
@@ -165,7 +165,7 @@ impl ServerService {
         )
     }
 
-    pub async fn create_server(&self, new_server_row: NewServerRow) -> AppResult<Server> {
+    pub async fn create_server(&self, new_server_row: ServerRowInput) -> AppResult<Server> {
         let server_row = sqlx::query_as!(
             ServerRow,
             r#"

@@ -78,16 +78,17 @@ impl TryFrom<SshKeyRow> for SshKey {
                 id: value.id,
                 name: value.name,
                 username: value.username,
-                private_key: value.private_key.ok_or(AppError::CouldNotParse(
-                    "SshKey missing private key".to_string(),
-                ))?,
+                private_key: value.private_key.ok_or(AppError::CouldNotParse(format!(
+                    "SshKey missing private key. SshKey ID: {}",
+                    value.id
+                )))?,
                 public_key: value.public_key,
             }),
         }
     }
 }
 
-impl NewSshKeyRow {
+impl SshKeyRowInput {
     pub fn new(key_name: String, ssh_auth_request: SshAuthRequest) -> Self {
         match ssh_auth_request {
             SshAuthRequest::Password { username, password } => Self {
@@ -161,7 +162,7 @@ impl SshService {
         }
     }
 
-    pub async fn create_ssh_key(&self, new_ssh_key_row: NewSshKeyRow) -> AppResult<SshKey> {
+    pub async fn create_ssh_key(&self, ssh_key_row_input: SshKeyRowInput) -> AppResult<SshKey> {
         let ssh_key_row = sqlx::query_as!(
             SshKeyRow,
             r#"
@@ -177,13 +178,13 @@ impl SshService {
                 auth_type as "auth_type!: _",
                 created_at
             "#,
-            new_ssh_key_row.name,
-            new_ssh_key_row.username,
-            new_ssh_key_row.password,
-            new_ssh_key_row.private_key.as_ref().map(Deref::deref),
-            new_ssh_key_row.public_key.as_ref().map(Deref::deref),
-            new_ssh_key_row.auth_type as AuthType,
-            new_ssh_key_row.created_at
+            ssh_key_row_input.name,
+            ssh_key_row_input.username,
+            ssh_key_row_input.password,
+            ssh_key_row_input.private_key.as_ref().map(Deref::deref),
+            ssh_key_row_input.public_key.as_ref().map(Deref::deref),
+            ssh_key_row_input.auth_type as AuthType,
+            ssh_key_row_input.created_at
         )
             .fetch_one(&*self.db)
             .await?;
@@ -255,9 +256,9 @@ mod test {
             username: NonEmptyString::try_new("alice").unwrap(),
             password: NonEmptyString::try_new("s3cretpass").unwrap(),
         };
-        let new_row = NewSshKeyRow::new("pw-key".to_string(), req);
+        let row_input = SshKeyRowInput::new("pw-key".to_string(), req);
 
-        let created = service.create_ssh_key(new_row).await.unwrap();
+        let created = service.create_ssh_key(row_input).await.unwrap();
 
         match created {
             SshKey::Password {
@@ -286,9 +287,9 @@ mod test {
                 SshPublicKey::try_new("ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCs").unwrap(),
             ),
         };
-        let new_row = NewSshKeyRow::new("kp-key".to_string(), req);
+        let row_input = SshKeyRowInput::new("kp-key".to_string(), req);
 
-        let created = service.create_ssh_key(new_row).await.unwrap();
+        let created = service.create_ssh_key(row_input).await.unwrap();
 
         match created {
             SshKey::KeyPair {

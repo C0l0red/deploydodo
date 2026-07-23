@@ -6,7 +6,7 @@ use crate::error::{AppError, AppResult};
 use crate::extractors::RequestJson;
 use crate::new_types::{HashedPassword, NonEmptyString, PlainPassword};
 use crate::services::types::VariableKey;
-use crate::services::user_service::{NewUser, UserId};
+use crate::services::user_service::{UserId, UserInput};
 use crate::{dependencies::Dependencies, services::types::AccountType};
 
 #[derive(Deserialize, ToSchema)]
@@ -48,8 +48,8 @@ pub async fn create_admin(
     }
 
     let hashed_password = HashedPassword::hash(&request.password)?;
-    let new_user = NewUser::admin(request, hashed_password);
-    let user = deps.user_service.create_user(new_user).await?;
+    let user_input = UserInput::admin(request, hashed_password);
+    let user = deps.user_service.create_user(user_input).await?;
 
     let session_token = deps.session_service.create_session(user.id).await?;
     deps.variables_service

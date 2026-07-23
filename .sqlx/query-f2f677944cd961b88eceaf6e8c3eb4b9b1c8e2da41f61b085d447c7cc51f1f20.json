@@ -1,11 +1,11 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, name, server_type AS \"server_type!: ServerType\", hostname, ssh_port, ssh_key_id FROM servers WHERE id = $1",
+  "query": "\n            SELECT\n                id as \"id!: ServerId\",\n                name,\n                server_type AS \"server_type!: ServerType\",\n                hostname,\n                ssh_port AS \"ssh_port?: ServerPort\",\n                ssh_key_id AS \"ssh_key_id?: SshKeyId\",\n                created_at\n            FROM servers WHERE id = $1\n            ",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "id",
+        "name": "id!: ServerId",
         "type_info": "Int8"
       },
       {
@@ -35,13 +35,18 @@
       },
       {
         "ordinal": 4,
-        "name": "ssh_port",
+        "name": "ssh_port?: ServerPort",
         "type_info": "Int4"
       },
       {
         "ordinal": 5,
-        "name": "ssh_key_id",
+        "name": "ssh_key_id?: SshKeyId",
         "type_info": "Int8"
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at",
+        "type_info": "Timestamptz"
       }
     ],
     "parameters": {
@@ -55,8 +60,9 @@
       false,
       true,
       true,
-      true
+      true,
+      false
     ]
   },
-  "hash": "9f67bce137048646d428778489baced896a3f9b8ed0af95ec6a9a87fd7eb2e7e"
+  "hash": "f2f677944cd961b88eceaf6e8c3eb4b9b1c8e2da41f61b085d447c7cc51f1f20"
 }

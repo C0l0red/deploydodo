@@ -38,7 +38,7 @@ entity! {
     }
 }
 
-impl NewUser {
+impl UserInput {
     pub fn admin(
         create_admin_request: CreateAdminRequest,
         hashed_password: HashedPassword,
@@ -58,7 +58,7 @@ impl UserService {
         Self { db }
     }
 
-    pub async fn create_user(&self, new_user: NewUser) -> AppResult<User> {
+    pub async fn create_user(&self, user_input: UserInput) -> AppResult<User> {
         Ok(sqlx::query_as!(
             User,
             r#"
@@ -72,11 +72,11 @@ impl UserService {
                 account_type AS "account_type: AccountType",
                 created_at
             "#,
-            new_user.name,
-            new_user.email,
-            new_user.password_hash.deref(),
-            new_user.account_type as AccountType,
-            new_user.created_at
+            user_input.name,
+            user_input.email,
+            user_input.password_hash.deref(),
+            user_input.account_type as AccountType,
+            user_input.created_at
         )
         .fetch_one(&*self.db)
         .await?)
@@ -114,7 +114,7 @@ impl UserService {
 mod test {
     use crate::new_types::HashedPassword;
     use crate::services::user_service::UserId;
-    use crate::services::user_service::{AccountType, NewUser, User};
+    use crate::services::user_service::{AccountType, User, UserInput};
     use crate::services::UserService;
     use std::sync::Arc;
 
@@ -127,7 +127,7 @@ mod test {
         let user_service = make_user_service(&pool);
         let password_hash =
             HashedPassword::hash(&"test_password".into()).expect("Failed to hash password");
-        let new_user = NewUser {
+        let user_input = UserInput {
             name: "test".to_string(),
             email: "test@test.com".to_string(),
             password_hash,
@@ -135,7 +135,7 @@ mod test {
             created_at: Default::default(),
         };
 
-        user_service.create_user(new_user).await.unwrap();
+        user_service.create_user(user_input).await.unwrap();
 
         let db_user = sqlx::query_as!(
             User,

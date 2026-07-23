@@ -4,10 +4,9 @@ use argon2::password_hash::{Encoding, SaltString};
 use argon2::{Argon2, PasswordHasher, PasswordVerifier};
 use rand_core::OsRng;
 use serde::Serialize;
-use std::fmt::Display;
+use std::fmt::{Debug, Display};
 use std::num::NonZeroU16;
 use std::str::FromStr;
-use url::Host;
 use utoipa::ToSchema;
 
 newtype! {
@@ -23,6 +22,12 @@ impl PlainPassword {
         }
 
         Ok(Self(value))
+    }
+}
+
+impl Debug for PlainPassword {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("PlainPassword").field(&"***").finish()
     }
 }
 
@@ -60,6 +65,12 @@ impl HashedPassword {
         Argon2::default()
             .verify_password(plain_password.as_bytes(), &parsed_hash)
             .map_err(|_| AppError::InvalidCredentials)
+    }
+}
+
+impl Debug for HashedPassword {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("HashedPassword").field(&"***").finish()
     }
 }
 
@@ -128,8 +139,6 @@ impl Hostname {
     // FIXME: This validation is not working in the way I expected. Need to find another way
     pub fn try_new(value: impl Into<String>) -> Result<Self, AppError> {
         let value = value.into().trim().to_owned();
-
-        Host::parse(&value).map_err(|_| AppError::Validation("must be a valid host".into()))?;
 
         Ok(Self(value))
     }

@@ -25,7 +25,7 @@ macro_rules! entity {
 
         paste::paste! {
             $(#[$meta])*
-            $vis struct [<New $name>] {
+            $vis struct [<$name Input>] {
                 $(
                     pub $field: $ty,
                 )*

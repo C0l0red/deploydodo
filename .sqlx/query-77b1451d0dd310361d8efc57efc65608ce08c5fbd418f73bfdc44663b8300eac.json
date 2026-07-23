@@ -1,0 +1,90 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO ssh_keys (name, username, password, private_key, public_key, auth_type, created_at)\n            VALUES ($1, $2, $3, $4, $5, $6, $7)\n            RETURNING\n                id AS \"id!: _\",\n                name,\n                username,\n                password,\n                private_key as \"private_key: _\",\n                public_key as \"public_key: _\",\n                auth_type as \"auth_type!: _\",\n                created_at\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: _",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "username",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "password",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "private_key: _",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "public_key: _",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "auth_type!: _",
+        "type_info": {
+          "Custom": {
+            "name": "authtype",
+            "kind": {
+              "Enum": [
+                "keypair",
+                "password"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Varchar",
+        "Text",
+        "Text",
+        "Text",
+        {
+          "Custom": {
+            "name": "authtype",
+            "kind": {
+              "Enum": [
+                "keypair",
+                "password"
+              ]
+            }
+          }
+        },
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "77b1451d0dd310361d8efc57efc65608ce08c5fbd418f73bfdc44663b8300eac"
+}
