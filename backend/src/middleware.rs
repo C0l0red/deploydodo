@@ -1,13 +1,13 @@
 use std::collections::HashMap;
 
+use crate::impl_deref;
+use axum::http::header::AUTHORIZATION;
 use axum::{
     body::Body,
     http::{Request, StatusCode},
     middleware::Next,
     response::Response,
 };
-use axum::http::header::AUTHORIZATION;
-use crate::impl_deref;
 
 const QUERY_TOKEN_KEY: &str = "token";
 

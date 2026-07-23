@@ -18,10 +18,7 @@ impl FromRequestParts<Dependencies> for Auth {
         deps: &Dependencies,
     ) -> Result<Self, Self::Rejection> {
         if let Some(bearer_token) = parts.extensions.get::<BearerToken>() {
-            let user = deps
-                .session_service
-                .get_session_user(bearer_token)
-                .await?;
+            let user = deps.session_service.get_session_user(bearer_token).await?;
 
             if let Some(user) = user {
                 return Ok(Auth(user));

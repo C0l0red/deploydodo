@@ -198,7 +198,7 @@ macro_rules! entity_id {
             /// An i64 newtype for all database entity IDs
             ///
             /// ## Methods
-            /// - try_new(i64) 
+            /// - try_new(i64)
             ///
             /// ## Derives:
             /// - Debug

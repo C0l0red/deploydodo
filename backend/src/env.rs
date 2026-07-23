@@ -55,4 +55,3 @@ fn read_file_path_from_env(key: &str) -> String {
     std::fs::read_to_string(&path)
         .unwrap_or_else(|_| panic!("The path stored in {key} ({path}) does not exist"))
 }
-

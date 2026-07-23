@@ -112,8 +112,8 @@ impl UserService {
 
 mod test {
     use crate::new_types::HashedPassword;
-    use crate::services::user_service::{AccountType, NewUser, User};
     use crate::services::user_service::UserId;
+    use crate::services::user_service::{AccountType, NewUser, User};
     use crate::services::UserService;
     use std::sync::Arc;
 
@@ -124,7 +124,8 @@ mod test {
     #[sqlx::test]
     async fn create_user_persists_a_user(pool: sqlx::PgPool) {
         let user_service = make_user_service(&pool);
-        let password_hash = HashedPassword::hash(&"test_password".into()).expect("Failed to hash password");
+        let password_hash =
+            HashedPassword::hash(&"test_password".into()).expect("Failed to hash password");
         let new_user = NewUser {
             name: "test".to_string(),
             email: "test@test.com".to_string(),
@@ -148,9 +149,10 @@ mod test {
             FROM users
             LIMIT 1
             "#
-        ).fetch_one(&pool)
-            .await
-            .unwrap();
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
 
         assert_eq!(db_user.name, "test");
         assert_eq!(created_user.email, "test@test.com");
@@ -171,10 +173,7 @@ mod test {
     async fn get_by_email_returns_user_when_present(pool: sqlx::PgPool) {
         let user_service = make_user_service(&pool);
 
-        let found = user_service
-            .get_by_email("ada@example.com")
-            .await
-            .unwrap();
+        let found = user_service.get_by_email("ada@example.com").await.unwrap();
 
         let user = found.expect("expected user for ada@example.com");
         assert_eq!(user.email, "ada@example.com");

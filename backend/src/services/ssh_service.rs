@@ -270,10 +270,10 @@ impl SshService {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::new_types::NonEmptyString;
     use crate::routes::create_remote_server::SshAuthRequest;
     use crate::services::server_service::{Server, ServerId};
     use std::sync::Arc;
-    use crate::new_types::NonEmptyString;
 
     fn make_service(pool: &PgPool) -> SshService {
         SshService {
@@ -298,7 +298,12 @@ mod test {
         let created = service.create_ssh_key(new_row).await.unwrap();
 
         match created {
-            SshKey::Password { name, username, password, .. } => {
+            SshKey::Password {
+                name,
+                username,
+                password,
+                ..
+            } => {
                 assert_eq!(name, "pw-key");
                 assert_eq!(username, "alice");
                 assert_eq!(password, "s3cretpass");
@@ -315,17 +320,22 @@ mod test {
         let req = SshAuthRequest::KeyPair {
             username: NonEmptyString::try_new("bob").unwrap(),
             private_key: SshPrivateKey::try_new(pem).unwrap(),
-            public_key: Some(SshPublicKey::try_new(
-                "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCs",
-            )
-            .unwrap()),
+            public_key: Some(
+                SshPublicKey::try_new("ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCs").unwrap(),
+            ),
         };
         let new_row = NewSshKeyRow::new("kp-key".to_string(), req);
 
         let created = service.create_ssh_key(new_row).await.unwrap();
 
         match created {
-            SshKey::KeyPair { name, username, private_key, public_key, .. } => {
+            SshKey::KeyPair {
+                name,
+                username,
+                private_key,
+                public_key,
+                ..
+            } => {
                 assert_eq!(name, "kp-key");
                 assert_eq!(username, "bob");
                 assert!(private_key.as_str().starts_with("-----BEGIN"));
@@ -347,7 +357,12 @@ mod test {
         let key = service.get_key_by_id(&SshKeyId(id)).await.unwrap();
 
         match key {
-            SshKey::Password { name, username, password, .. } => {
+            SshKey::Password {
+                name,
+                username,
+                password,
+                ..
+            } => {
                 assert_eq!(name, "pw-fixture");
                 assert_eq!(username, "ada");
                 assert_eq!(password, "hunter2");
@@ -360,7 +375,9 @@ mod test {
     async fn get_key_by_id_returns_error_for_unknown_id(pool: PgPool) {
         let service = make_service(&pool);
 
-        let res = service.get_key_by_id(&SshKeyId::try_new(9_999_999).unwrap()).await;
+        let res = service
+            .get_key_by_id(&SshKeyId::try_new(9_999_999).unwrap())
+            .await;
         assert!(res.is_err(), "should error for unknown id");
         assert!(res.err().unwrap().to_string().contains("SSH key not found"));
     }
@@ -376,7 +393,11 @@ mod test {
         let key = service.get_key_for_server(&server).await.unwrap();
 
         match key {
-            SshKey::KeyPair { username, private_key, .. } => {
+            SshKey::KeyPair {
+                username,
+                private_key,
+                ..
+            } => {
                 assert_eq!(username, "tester");
                 assert!(private_key.as_str().starts_with("-----BEGIN"));
             }

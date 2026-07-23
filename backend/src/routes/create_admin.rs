@@ -6,8 +6,8 @@ use crate::error::{AppError, AppResult};
 use crate::extractors::RequestJson;
 use crate::new_types::{HashedPassword, NonEmptyString, PlainPassword};
 use crate::services::types::VariableKey;
-use crate::{dependencies::Dependencies, services::types::AccountType};
 use crate::services::user_service::{NewUser, UserId};
+use crate::{dependencies::Dependencies, services::types::AccountType};
 
 #[derive(Deserialize, ToSchema)]
 pub struct CreateAdminRequest {

@@ -7,10 +7,10 @@ use chrono::Utc;
 use rand_core::{OsRng, RngCore};
 use sqlx::PgPool;
 
-use crate::services::user_service::UserId;
 use crate::error::AppResult;
 use crate::middleware::BearerToken;
 use crate::services::types::User;
+use crate::services::user_service::UserId;
 
 pub struct SessionService {
     db: Arc<PgPool>,
@@ -40,10 +40,9 @@ impl SessionService {
 
     // FIXME: Should this be here on in the user service? As it returns a user
     pub async fn get_session_user(&self, token: &BearerToken) -> AppResult<Option<User>> {
-        Ok(
-            sqlx::query_as!(
-                User,
-                r#"
+        Ok(sqlx::query_as!(
+            User,
+            r#"
                 SELECT
                     id AS "id: UserId",
                     name,
@@ -58,9 +57,10 @@ impl SessionService {
                     WHERE session_token = $1
                     LIMIT 1
                     )
-                "#, token.deref())
-                .fetch_optional(&*self.db)
-                .await?,
+                "#,
+            token.deref()
         )
+        .fetch_optional(&*self.db)
+        .await?)
     }
 }

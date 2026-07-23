@@ -1,12 +1,12 @@
 use crate::error::{AppError, AppResult};
 use crate::{impl_deref, impl_deserialize_via_try_new, impl_sqlx_type_via, newtype};
 use argon2::password_hash::{Encoding, SaltString};
+use argon2::{Argon2, PasswordHasher, PasswordVerifier};
+use rand_core::OsRng;
 use serde::Serialize;
 use std::fmt::Display;
 use std::num::NonZeroU16;
 use std::str::FromStr;
-use argon2::{Argon2, PasswordHasher, PasswordVerifier};
-use rand_core::OsRng;
 use url::Host;
 use utoipa::ToSchema;
 
@@ -54,10 +54,7 @@ impl HashedPassword {
             .map(Into::into)
     }
 
-    pub fn verify(
-        &self,
-        plain_password: &PlainPassword,
-    ) -> AppResult<()> {
+    pub fn verify(&self, plain_password: &PlainPassword) -> AppResult<()> {
         let parsed_hash = argon2::PasswordHash::new(&self)
             .map_err(|e| AppError::InternalServerError(e.to_string()))?;
         Argon2::default()
@@ -185,7 +182,10 @@ impl SshPrivateKey {
 
 #[cfg(test)]
 mod tests {
-    use crate::new_types::{Hostname, NonEmptyString, PlainPassword, ServerPort, HashedPassword, SshPublicKey, SshPrivateKey};
+    use crate::new_types::{
+        HashedPassword, Hostname, NonEmptyString, PlainPassword, ServerPort, SshPrivateKey,
+        SshPublicKey,
+    };
 
     #[test]
     fn non_empty_string_rejects_blank_values() {
@@ -205,7 +205,10 @@ mod tests {
     #[test]
     fn password_rejects_short_values() {
         let res = serde_json::from_str::<PlainPassword>(r#""short""#);
-        assert!(res.is_err(), "passwords shorter than 8 chars must be rejected");
+        assert!(
+            res.is_err(),
+            "passwords shorter than 8 chars must be rejected"
+        );
         let err = res.err().unwrap();
         assert_eq!(err.to_string(), "must be at least 8 characters");
     }
@@ -245,7 +248,10 @@ mod tests {
     fn hashed_password_rejects_invalid_hash() {
         let res = HashedPassword::try_new("not-a-valid-hash");
         assert!(res.is_err(), "invalid hash must be rejected");
-        assert_eq!(res.err().unwrap().to_string(), "could not parse: Password hash");
+        assert_eq!(
+            res.err().unwrap().to_string(),
+            "could not parse: Password hash"
+        );
     }
 
     #[test]
@@ -263,7 +269,9 @@ mod tests {
 
     #[test]
     fn ssh_public_key_accepts_non_empty() {
-        let key = serde_json::from_str::<SshPublicKey>(r#""ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCs""#).unwrap();
+        let key =
+            serde_json::from_str::<SshPublicKey>(r#""ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCs""#)
+                .unwrap();
         assert!(!key.as_str().is_empty());
     }
 
