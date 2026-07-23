@@ -1,6 +1,5 @@
 use dodosh::terminal::TermSize;
 use dodosh::{terminal, SshTimeout};
-use std::ops::Deref;
 
 use crate::dependencies::Dependencies;
 use crate::error::AppResult;

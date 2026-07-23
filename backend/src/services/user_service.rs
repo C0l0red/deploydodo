@@ -110,12 +110,13 @@ impl UserService {
     }
 }
 
+#[cfg(test)]
 mod test {
-    use crate::new_types::HashedPassword;
     use crate::services::user_service::UserId;
-    use crate::services::user_service::{AccountType, NewUser, User};
-    use crate::services::UserService;
+use crate::services::UserService;
     use std::sync::Arc;
+    use crate::new_types::HashedPassword;
+    use crate::services::user_service::{AccountType, NewUser, User};
 
     fn make_user_service(pool: &sqlx::PgPool) -> UserService {
         UserService::new(Arc::new(pool.clone()))
