@@ -31,10 +31,6 @@ impl AuthType {
     }
 }
 
-entity_id! {
-    pub struct SshKeyId;
-}
-
 entity! {
     #[derive(sqlx::FromRow)]
     pub struct SshKeyRow {

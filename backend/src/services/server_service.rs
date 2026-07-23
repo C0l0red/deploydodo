@@ -30,11 +30,6 @@ impl ServerType {
     }
 }
 
-// Create a macro for ID newtypes
-entity_id! {
-    pub struct ServerId;
-}
-
 #[derive(Debug)]
 pub enum Server {
     Remote {

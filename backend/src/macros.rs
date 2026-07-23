@@ -4,12 +4,17 @@ macro_rules! entity {
     (
         $(#[$meta:meta])*
         $vis:vis struct $name:ident {
-            id: $id_ty:ty,
+            id: $id_ty:ident,
             $(
                 $field:ident : $ty:ty
             ),* $(,)?
         }
     ) => {
+        // Invoke entity_id! macro
+        entity_id! {
+            $vis struct $id_ty;
+        }
+
         $(#[$meta])*
         $vis struct $name {
             pub id: $id_ty,
@@ -190,6 +195,25 @@ macro_rules! entity_id {
         $vis:vis struct $name:ident;
     ) => {
         newtype! {
+            /// An i64 newtype for all database entity IDs
+            ///
+            /// ## Methods
+            /// - try_new(i64) 
+            ///
+            /// ## Derives:
+            /// - Debug
+            /// - serde::Serialize
+            /// - utoipa::ToSchema
+            /// - sqlx::Type
+            /// - Copy
+            /// - Clone
+            ///
+            /// ## Implements
+            /// - serde::Deserialize
+            /// - Display
+            ///
+            /// ## Attributes
+            /// - sqlx(transparent)
             $(#[$meta])*
             #[derive(Debug, serde::Serialize, Copy, Clone)]
             $vis struct $name(i64);

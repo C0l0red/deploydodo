@@ -26,10 +26,6 @@ pub enum AccountType {
     Member,
 }
 
-entity_id! {
-    pub struct UserId;
-}
-
 entity! {
     #[derive(FromRow)]
     pub struct User {
