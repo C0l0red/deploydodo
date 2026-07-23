@@ -55,7 +55,7 @@ impl HashedPassword {
     }
 
     pub fn verify(&self, plain_password: &PlainPassword) -> AppResult<()> {
-        let parsed_hash = argon2::PasswordHash::new(&self)
+        let parsed_hash = argon2::PasswordHash::new(self)
             .map_err(|e| AppError::InternalServerError(e.to_string()))?;
         Argon2::default()
             .verify_password(plain_password.as_bytes(), &parsed_hash)
@@ -148,7 +148,7 @@ newtype! {
 
 impl From<NonEmptyString> for String {
     fn from(value: NonEmptyString) -> Self {
-        value.into()
+        value.0
     }
 }
 

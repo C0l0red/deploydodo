@@ -119,7 +119,7 @@ impl NewSshKeyRow {
 impl SshKey {
     pub fn id(&self) -> SshKeyId {
         match self {
-            SshKey::Password { id, .. } | SshKey::KeyPair { id, .. } => id.clone(),
+            SshKey::Password { id, .. } | SshKey::KeyPair { id, .. } => *id,
         }
     }
 
@@ -188,7 +188,7 @@ impl SshService {
             .fetch_one(&*self.db)
             .await?;
 
-        Ok(SshKey::try_from(ssh_key_row)?)
+        SshKey::try_from(ssh_key_row)
     }
 
     pub async fn get_key_by_id(&self, key_id: &SshKeyId) -> AppResult<SshKey> {
@@ -212,7 +212,7 @@ impl SshService {
         .await?
         .ok_or(AppError::Validation("SSH key not found".into()))?;
 
-        Ok(SshKey::try_from(ssh_key_row)?)
+        SshKey::try_from(ssh_key_row)
     }
 
     pub async fn get_key_for_server(&self, server: &Server) -> AppResult<SshKey> {

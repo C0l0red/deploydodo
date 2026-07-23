@@ -190,7 +190,7 @@ impl ServerService {
         .fetch_one(&*self.db)
         .await?;
 
-        Ok(server_row.try_into()?)
+        server_row.try_into()
     }
 
     pub async fn get_server_by_id(&self, server_id: ServerId) -> AppResult<Server> {
@@ -213,7 +213,7 @@ impl ServerService {
         .await?
         .ok_or(AppError::not_found("Server not found"))?;
 
-        Ok(server_row.try_into()?)
+        server_row.try_into()
     }
 
     pub async fn list_servers(&self) -> AppResult<Vec<Server>> {
