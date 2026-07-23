@@ -36,7 +36,7 @@ pub async fn terminal_init(
         } else {
             Ok(terminal::connect_docker_remote(
                 server.hostname(),
-                *server.ssh_port().deref(),
+                *server.ssh_port(),
                 ssh_key.username(),
                 ssh_key.into(),
                 container_name,
@@ -48,7 +48,7 @@ pub async fn terminal_init(
     } else {
         Ok(terminal::connect_host(
             server.hostname(),
-            *server.ssh_port().deref(),
+            *server.ssh_port(),
             ssh_key.username(),
             ssh_key.into(),
             params.into(),

@@ -134,7 +134,7 @@ mod test {
             created_at: Default::default(),
         };
 
-        let created_user = user_service.create_user(new_user).await.unwrap();
+        user_service.create_user(new_user).await.unwrap();
 
         let db_user = sqlx::query_as!(
             User,
@@ -155,8 +155,8 @@ mod test {
         .unwrap();
 
         assert_eq!(db_user.name, "test");
-        assert_eq!(created_user.email, "test@test.com");
-        assert_eq!(created_user.account_type, AccountType::Admin);
+        assert_eq!(db_user.email, "test@test.com");
+        assert_eq!(db_user.account_type, AccountType::Admin);
     }
 
     #[sqlx::test(fixtures(path = "../../tests/fixtures", scripts("users")))]

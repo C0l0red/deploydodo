@@ -87,44 +87,6 @@ impl TryFrom<SshKeyRow> for SshKey {
     }
 }
 
-impl From<SshKey> for SshKeyRow {
-    fn from(value: SshKey) -> Self {
-        match value {
-            SshKey::Password {
-                id,
-                name,
-                username,
-                password,
-            } => Self {
-                id,
-                name,
-                username,
-                password: Some(password),
-                auth_type: AuthType::Password,
-                created_at: Utc::now(),
-                private_key: None,
-                public_key: None,
-            },
-            SshKey::KeyPair {
-                id,
-                name,
-                username,
-                public_key,
-                private_key,
-            } => Self {
-                id,
-                name,
-                username,
-                public_key,
-                private_key: Some(private_key),
-                auth_type: AuthType::KeyPair,
-                created_at: Utc::now(),
-                password: None,
-            },
-        }
-    }
-}
-
 impl NewSshKeyRow {
     pub fn new(key_name: String, ssh_auth_request: SshAuthRequest) -> Self {
         match ssh_auth_request {
@@ -154,7 +116,7 @@ impl NewSshKeyRow {
     }
 }
 
-impl<'a> SshKey {
+impl SshKey {
     pub fn id(&self) -> SshKeyId {
         match self {
             SshKey::Password { id, .. } | SshKey::KeyPair { id, .. } => id.clone(),

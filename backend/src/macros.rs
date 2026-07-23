@@ -4,7 +4,7 @@ macro_rules! entity {
     (
         $(#[$meta:meta])*
         $vis:vis struct $name:ident {
-            id: $id_ty:ident,
+            $id_field_name:ident : $id_ty:ident,
             $(
                 $field:ident : $ty:ty
             ),* $(,)?
@@ -17,7 +17,7 @@ macro_rules! entity {
 
         $(#[$meta])*
         $vis struct $name {
-            pub id: $id_ty,
+            pub $id_field_name: $id_ty,
             $(
                 pub $field: $ty,
             )*
@@ -224,6 +224,13 @@ macro_rules! entity_id {
                 Ok(Self(value))
             }
         }
+
+        impl From<$name> for i64 {
+            fn from(value: $name) -> Self {
+                value.0
+            }
+        }
+
         impl_display_via_to_string!($name);
     };
 }
