@@ -48,7 +48,7 @@ cwd = "backend"
 [tasks.prepare-query]
 description = "Prepare SQLx for compile time query checking"
 command = "cargo"
-args = ["sqlx", "prepare", "--workspace"]
+args = ["sqlx", "prepare", "--workspace", "--", "--all-targets"]
 
 [tasks.sleep3s]
 description = "Sleep for 3s"
